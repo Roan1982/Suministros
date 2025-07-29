@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if request.GET.logout %}
+<div class="alert alert-info text-center">Sesión cerrada correctamente.</div>
+{% endif %}
+<h2>Iniciar sesión</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn btn-primary">Entrar</button>
+</form>
+{% endblock %}

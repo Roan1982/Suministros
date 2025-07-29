@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Remito de Entrega</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .remito-header { margin-bottom: 20px; }
+        .remito-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .remito-table th, .remito-table td { border: 1px solid #333; padding: 6px; text-align: left; }
+        .remito-footer { margin-top: 30px; }
+        .firma { margin-top: 40px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+{% extends 'base.html' %}
+{% block content %}
+<div class="remito-header">
+    <h2>Remito de Entrega N° {{ entrega.id }}</h2>
+    <p><strong>Fecha:</strong> {{ entrega.fecha|date:"d/m/Y H:i" }}</p>
+    <p><strong>Área/Persona:</strong> {{ entrega.area_persona }}</p>
+    {# Eliminado: Orden de Compra general #}
+    <p><strong>Observaciones:</strong> {{ entrega.observaciones }}</p>
+</div>
+<table class="remito-table">
+    <thead>
+        <tr>
+            <th>Orden de Compra</th>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Precio Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in entrega.items.all %}
+        <tr>
+            <td>{% if item.orden_de_compra %}{{ item.orden_de_compra }}{% else %}-{% endif %}</td>
+            <td>{{ item.bien }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>${{ item.precio_unitario }}</td>
+            <td>${{ item.precio_total }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="remito-footer">
+    <strong>Total Remito: ${{ entrega.total_entrega }}</strong>
+</div>
+<div class="firma">
+    <p>.......................................................</p>
+    <p>Firma y aclaración</p>
+</div>
+{% if imprimir %}
+<script>window.print();</script>
+{% else %}
+<p class="no-print">
+    <a href="javascript:window.print()" class="btn btn-primary">Imprimir</a>
+    <a href="{% url 'remito_pdf' entrega.id %}" class="btn btn-secondary">Descargar PDF</a>
+    <a href="/" class="btn btn-link">Volver</a>
+</p>
+{% endif %}
+{% endblock %}
+</body>
+</html>

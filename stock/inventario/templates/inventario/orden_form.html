@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ titulo }}</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <h3>Ítems de la orden</h3>
+  {{ formset.management_form }}
+
+  <table id="items-table" class="table table-bordered align-middle">
+    <thead>
+      <tr>
+        {% for field in formset.empty_form.visible_fields %}
+          <th>{{ field.label }}</th>
+        {% endfor %}
+        <th>Eliminar</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in formset.forms %}
+        <tr class="item-form-row">
+          {% for field in form.visible_fields %}
+            <td>{{ field }}</td>
+          {% endfor %}
+          <td>{% if form.instance.pk %}{{ form.DELETE }}{% else %}<button type="button" class="btn btn-danger btn-sm remove-row">X</button>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="button" id="add-row" class="btn btn-outline-primary mt-2">+ Agregar ítem</button>
+  <a href="{% url agregar_bien_url %}" target="_blank" class="btn btn-secondary ms-2">+ Agregar nuevo bien</a>
+  <br><br>
+  <button type="submit">Guardar</button>
+</form>
+<a href="{% url 'dashboard' %}">Volver al panel</a>
+
+<script>
+// JS para agregar/eliminar filas dinámicamente con formato igual a la inicial
+document.addEventListener('DOMContentLoaded', function() {
+  const addRowBtn = document.getElementById('add-row');
+  const table = document.getElementById('items-table').getElementsByTagName('tbody')[0];
+  const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+  // Renderizar la fila vacía como HTML de tabla
+  const emptyRowHtml = `{% for field in formset.empty_form.visible_fields %}<td>{{ field }}</td>{% endfor %}<td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>`;
+
+  addRowBtn.addEventListener('click', function() {
+    const formNum = parseInt(totalForms.value);
+    let rowHtml = emptyRowHtml.replace(/__prefix__/g, formNum);
+    const tr = document.createElement('tr');
+    tr.className = 'item-form-row';
+    tr.innerHTML = rowHtml;
+    table.appendChild(tr);
+    totalForms.value = formNum + 1;
+  });
+
+  table.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-row')) {
+      const row = e.target.closest('tr');
+      row.remove();
+      // Actualizar el total de forms
+      totalForms.value = table.querySelectorAll('.item-form-row').length;
+    }
+  });
+});
+</script>
+{% endblock %}

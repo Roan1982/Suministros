@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h1>Editar Orden de Compra #{{ orden.numero }}</h1>
+<form method="post">
+    {% csrf_token %}
+    {% if form.errors %}
+      <div class="alert alert-danger">{{ form.errors }}</div>
+    {% endif %}
+    {{ form.as_p }}
+    <h3>Bienes de la Orden</h3>
+    {% if formset.non_form_errors %}
+      <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+    {% endif %}
+    {{ formset.management_form }}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Renglón</th>
+                <th>Bien</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Precio Total</th>
+                <th>Eliminar</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in formset %}
+            <tr>
+                {# Campos ocultos necesarios para que Django identifique el item (incluye id) #}
+                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                <td>{% if f.renglon.errors %}<div class="text-danger small">{{ f.renglon.errors }}</div>{% endif %}{{ f.renglon }}</td>
+                <td>{% if f.bien.errors %}<div class="text-danger small">{{ f.bien.errors }}</div>{% endif %}{{ f.bien }}</td>
+                <td>{% if f.cantidad.errors %}<div class="text-danger small">{{ f.cantidad.errors }}</div>{% endif %}{{ f.cantidad }}</td>
+                <td>{% if f.precio_unitario.errors %}<div class="text-danger small">{{ f.precio_unitario.errors }}</div>{% endif %}{{ f.precio_unitario }}</td>
+                <td class="precio-total-cell"></td>
+                <td>{% if f.DELETE.errors %}<div class="text-danger small">{{ f.DELETE.errors }}</div>{% endif %}{{ f.DELETE }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+    <a href="{% url 'orden_detalle' orden.id %}" class="btn btn-link">Cancelar</a>
+</form>
+<script src="{% static 'inventario/orden_editar_total.js' %}"></script>
+{% endblock %}

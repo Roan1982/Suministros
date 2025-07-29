@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Detalle de Orden de Compra #{{ orden.numero }}</h1>
+<p><strong>Proveedor:</strong> {{ orden.proveedor }}</p>
+<p><strong>Fecha de inicio:</strong> {{ orden.fecha_inicio }}</p>
+<p><strong>Fecha de fin:</strong> {{ orden.fecha_fin|default:'-' }}</p>
+<a href="{% url 'orden_editar' orden.id %}" class="btn btn-warning">Editar esta orden</a>
+<a href="{% url 'ordenes' %}" class="btn btn-link">Volver al listado</a>
+<hr>
+<h3>Bienes de la Orden</h3>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Renglón</th>
+            <th>Bien</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Precio Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in orden.items.all %}
+        <tr>
+            <td>{{ item.renglon }}</td>
+            <td>{{ item.bien }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>${{ item.precio_unitario }}</td>
+            <td>${{ item.precio_total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No hay bienes en esta orden.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

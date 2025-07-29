@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% block content %}
+<h1>Registrar Entrega / Remito</h1>
+<form method="post">
+  {% csrf_token %}
+
+  {# Renderizar los campos del form excepto 'orden_de_compra' #}
+  {% for field in form %}
+    {% if field.name != 'orden_de_compra' %}
+      <div class="form-group">{{ field.label_tag }} {{ field }}</div>
+    {% endif %}
+  {% endfor %}
+  <h3>Items</h3>
+  {{ formset.management_form }}
+  <table class="table">
+    <thead><tr><th>Bien</th><th>Orden de Compra</th><th>Cantidad</th><th>Precio Unitario</th></tr></thead>
+    <tbody>
+      {% for f in formset %}
+        <tr class="form-row">
+          <td>{{ f.bien|add_class:'bien-select' }}</td>
+          <td>
+            <select name="{{ f.orden_de_compra.name }}" class="orden-select form-control">
+              <option value="">---------</option>
+              {% if f.orden_de_compra.value %}
+                <option value="{{ f.orden_de_compra.value }}" selected>Orden actual</option>
+              {% endif %}
+            </select>
+          </td>
+          <td>{{ f.cantidad }}</td>
+          <td>
+            <span class="precio-unitario-cell">
+              {% if f.instance.precio_unitario %}
+                {{ f.instance.precio_unitario }}
+              {% else %}
+                -
+              {% endif %}
+            </span>
+            {{ f.precio_unitario.as_hidden }}
+          </td>
+        </tr>
+      {% endfor %}
+      <tr>
+        <td colspan="4">
+          <button type="button" id="add-item" class="btn btn-secondary">Agregar bien</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <button type="submit" class="btn btn-success" onclick="debugFormset()">Guardar Entrega</button>
+</form>
+<a href="{% url 'dashboard' %}">Volver al panel</a>
+<script>
+function debugFormset() {
+    console.log('=== DEBUG FORMSET ANTES DE ENVIAR ===');
+    const form = document.querySelector('form');
+    const formData = new FormData(form);
+    
+    console.log('Todos los campos del formulario:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    const totalForms = document.querySelector('input[name="items-TOTAL_FORMS"]');
+    console.log('TOTAL_FORMS:', totalForms ? totalForms.value : 'NO ENCONTRADO');
+    
+    const initialForms = document.querySelector('input[name="items-INITIAL_FORMS"]');
+    console.log('INITIAL_FORMS:', initialForms ? initialForms.value : 'NO ENCONTRADO');
+    
+    // Contar formularios válidos
+    let validForms = 0;
+    for (let i = 0; i < 10; i++) {
+        const bienField = document.querySelector(`select[name="items-${i}-bien"]`);
+        const cantidadField = document.querySelector(`input[name="items-${i}-cantidad"]`);
+        if (bienField && cantidadField && bienField.value && cantidadField.value) {
+            console.log(`Formulario ${i} válido - Bien: ${bienField.value}, Cantidad: ${cantidadField.value}`);
+            validForms++;
+        }
+    }
+    console.log('Total de formularios válidos encontrados:', validForms);
+    console.log('=== FIN DEBUG ===');
+}
+</script>
+<script src="/static/inventario/orden_api.js"></script>
+<script src="/static/inventario/entrega_bien_orden.js"></script>
+<script src="/static/inventario/formset_dynamic.js"></script>
+{% endblock %}
