@@ -20,12 +20,7 @@
         <tr class="form-row">
           <td>{{ f.bien|add_class:'bien-select' }}</td>
           <td>
-            <select name="{{ f.orden_de_compra.name }}" class="orden-select form-control">
-              <option value="">---------</option>
-              {% if f.orden_de_compra.value %}
-                <option value="{{ f.orden_de_compra.value }}" selected>Orden actual</option>
-              {% endif %}
-            </select>
+            {{ f.orden_de_compra|add_class:'orden-select form-control' }}
           </td>
           <td>{{ f.cantidad }}</td>
           <td>

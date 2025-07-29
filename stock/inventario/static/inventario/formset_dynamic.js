@@ -137,31 +137,7 @@ function enlazarEventosFila(row) {
     console.log('Orden select encontrado:', ordenSelect);
     console.log('Bien select encontrado:', bienSelect);
     
-    if (ordenSelect) {
-        ordenSelect.addEventListener('change', function() {
-            const ordenId = ordenSelect.value;
-            console.log('Orden cambiada a:', ordenId);
-            if (!ordenId) return;
-            
-            fetch(`/api/orden_bienes/${ordenId}/`)
-                .then(resp => resp.json())
-                .then(data => {
-                    console.log('Bienes recibidos:', data.bienes);
-                    // Actualizar opciones de bien
-                    if (bienSelect) {
-                        bienSelect.innerHTML = '<option value="">---------</option>';
-                        data.bienes.forEach(function(bien) {
-                            const opt = document.createElement('option');
-                            opt.value = bien.id;
-                            opt.textContent = bien.nombre;
-                            bienSelect.appendChild(opt);
-                        });
-                        bienSelect.dispatchEvent(new Event('change'));
-                    }
-                })
-                .catch(error => console.error('Error cargando bienes:', error));
-        });
-    }
+    // Eliminado: No modificar el select de bien al cambiar la orden de compra
     
     if (bienSelect) {
         bienSelect.addEventListener('change', function() {

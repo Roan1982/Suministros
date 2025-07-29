@@ -3,18 +3,23 @@ from django.db.models import F, Sum
 from django.http import JsonResponse
 
 def api_ordenes_con_stock_bien(request, bien_id):
+    # Decorador eliminado para permitir acceso público
     # Buscar órdenes de compra con stock disponible para el bien
-    # Stock disponible = cantidad comprada - cantidad entregada
+    # Stock disponible = cantidad comprada - cantidad entregada (por bien y orden)
+    from .models import OrdenDeCompraItem, EntregaItem, Bien
+    try:
+        bien = Bien.objects.get(pk=bien_id)
+    except Bien.DoesNotExist:
+        return JsonResponse({'ordenes': []})
     items = (
-        OrdenDeCompraItem.objects
-        .filter(bien_id=bien_id)
-        .annotate(
-            entregado=Sum('orden_de_compra__entrega_items__cantidad', filter=models.Q(orden_de_compra__entrega_items__bien_id=bien_id))
-        )
+        OrdenDeCompraItem.objects.filter(bien_id=bien_id)
     )
     ordenes = []
     for item in items:
-        entregado = item.entregado or 0
+        entregado = EntregaItem.objects.filter(
+            bien_id=bien_id,
+            orden_de_compra=item.orden_de_compra
+        ).aggregate(total=Sum('cantidad'))['total'] or 0
         disponible = item.cantidad - entregado
         if disponible > 0:
             ordenes.append({
