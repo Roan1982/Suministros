@@ -1,47 +1,105 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>{{ titulo }}</h1>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <h3>Ítems de la orden</h3>
-  {{ formset.management_form }}
-
-  <table id="items-table" class="table table-bordered align-middle">
-    <thead>
-      <tr>
-        {% for field in formset.empty_form.visible_fields %}
-          <th>{{ field.label }}</th>
-        {% endfor %}
-        <th>Eliminar</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for form in formset.forms %}
-        <tr class="item-form-row">
-          {% for field in form.visible_fields %}
-            <td>{{ field }}</td>
-          {% endfor %}
-          <td>{% if form.instance.pk %}{{ form.DELETE }}{% else %}<button type="button" class="btn btn-danger btn-sm remove-row">X</button>{% endif %}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <button type="button" id="add-row" class="btn btn-outline-primary mt-2">+ Agregar ítem</button>
-  <a href="{% url agregar_bien_url %}" target="_blank" class="btn btn-secondary ms-2">+ Agregar nuevo bien</a>
-  <br><br>
-  <button type="submit">Guardar</button>
-</form>
-<a href="{% url 'dashboard' %}">Volver al panel</a>
+<div class="row justify-content-center">
+  <div class="col-lg-12 col-xl-10">
+    <div class="card shadow-lg border-0 mb-4 animate__animated animate__fadeIn">
+      <div class="card-body p-5">
+        <h2 class="mb-4 fw-bold text-primary">
+          <i class="fa-solid fa-file-contract me-2"></i>{{ titulo }}
+        </h2>
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
+          <div class="row g-4 mb-4">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">{{ form.numero.label }}</label>
+              {{ form.numero }}
+              {% if form.numero.errors %}
+                <div class="text-danger small">{{ form.numero.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">{{ form.proveedor.label }}</label>
+              {{ form.proveedor }}
+              {% if form.proveedor.errors %}
+                <div class="text-danger small">{{ form.proveedor.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">{{ form.fecha_inicio.label }}</label>
+                  {{ form.fecha_inicio }}
+                  {% if form.fecha_inicio.errors %}
+                    <div class="text-danger small">{{ form.fecha_inicio.errors|striptags }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">{{ form.fecha_fin.label }}</label>
+                  {{ form.fecha_fin }}
+                  {% if form.fecha_fin.errors %}
+                    <div class="text-danger small">{{ form.fecha_fin.errors|striptags }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-4">
+            <h4 class="fw-bold mb-3"><i class="fa-solid fa-list-check me-2 text-success"></i>Ítems de la orden</h4>
+            <div class="table-responsive rounded-4 shadow-sm">
+              {{ formset.management_form }}
+              <table id="items-table" class="table table-striped align-middle mb-0" style="min-width: 950px;">
+                <thead class="table-primary">
+                  <tr>
+                    {% for field in formset.empty_form.visible_fields %}
+                      <th style="white-space:nowrap;">{{ field.label }}</th>
+                    {% endfor %}
+                    <th style="min-width:60px;text-align:center;">Eliminar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for form in formset.forms %}
+                    <tr class="item-form-row">
+                      {% for field in form.visible_fields %}
+                        <td style="min-width:120px;vertical-align:middle;">{{ field }}</td>
+                      {% endfor %}
+                      <td style="vertical-align:middle;text-align:center;min-width:60px;">
+                        <button type="button" class="btn btn-danger btn-sm remove-row" tabindex="-1"><i class="fa-solid fa-trash"></i></button>
+                        {{ form.DELETE.as_hidden }}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <button type="button" id="add-row" class="btn btn-outline-primary mt-3 px-4 py-2 fw-semibold shadow-sm">
+              <i class="fa-solid fa-plus me-1"></i>Agregar ítem
+            </button>
+            <a href="{% url agregar_bien_url %}" target="_blank" class="btn btn-secondary ms-2 mt-3 px-4 py-2 fw-semibold shadow-sm">
+              <i class="fa-solid fa-box-open me-1"></i>Agregar nuevo bien
+            </a>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow">
+              <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
+            </button>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
+              <i class="fa-solid fa-arrow-left me-2"></i>Volver al panel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-// JS para agregar/eliminar filas dinámicamente con formato igual a la inicial
+// Unificar el botón de eliminar: siempre botón rojo, y marcar el DELETE oculto si existe
 document.addEventListener('DOMContentLoaded', function() {
   const addRowBtn = document.getElementById('add-row');
   const table = document.getElementById('items-table').getElementsByTagName('tbody')[0];
   const totalForms = document.getElementById('id_items-TOTAL_FORMS');
   // Renderizar la fila vacía como HTML de tabla
-  const emptyRowHtml = `{% for field in formset.empty_form.visible_fields %}<td>{{ field }}</td>{% endfor %}<td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>`;
+  const emptyRowHtml = `{% for field in formset.empty_form.visible_fields %}<td>{{ field }}</td>{% endfor %}<td style="vertical-align:middle;text-align:center;min-width:60px;"><button type="button" class="btn btn-danger btn-sm remove-row" tabindex="-1"><i class="fa-solid fa-trash"></i></button></td>`;
 
   addRowBtn.addEventListener('click', function() {
     const formNum = parseInt(totalForms.value);
@@ -56,9 +114,15 @@ document.addEventListener('DOMContentLoaded', function() {
   table.addEventListener('click', function(e) {
     if (e.target.classList.contains('remove-row')) {
       const row = e.target.closest('tr');
-      row.remove();
-      // Actualizar el total de forms
-      totalForms.value = table.querySelectorAll('.item-form-row').length;
+      // Si hay un input DELETE oculto, marcarlo y ocultar la fila
+      const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if (deleteInput) {
+        deleteInput.checked = true;
+        row.style.display = 'none';
+      } else {
+        row.remove();
+        totalForms.value = table.querySelectorAll('.item-form-row').length;
+      }
     }
   });
 });

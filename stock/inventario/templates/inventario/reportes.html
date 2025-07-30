@@ -1,61 +1,118 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Reportes</h1>
-<ul>
-  <li><a href="{% url 'reporte_stock_rubro' %}">Estado de stock por rubro</a></li>
-  <li><a href="{% url 'reporte_stock_bien' %}">Estado de stock por bien</a></li>
-  <li><a href="{% url 'reporte_entregas_anio' %}">Total de entregas por año</a></li>
-  <li><a href="{% url 'reporte_entregas_area' %}">Entregas por área/persona</a></li>
-  <li><a href="{% url 'reporte_ranking_bienes' %}">Ranking de bienes más entregados</a></li>
-  <li><a href="{% url 'reporte_ranking_proveedores' %}">Ranking de proveedores</a></li>
-</ul>
-<p>Selecciona un reporte para exportar a Excel o PDF.</p>
-<hr>
-<h3>Reporte personalizado</h3>
-<form method="get" class="mb-3">
-  <div class="row">
+<div class="row mb-4 g-4 justify-content-center">
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Stock por rubro">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-cubes-stacked text-info"></i> Estado de stock por rubro</h5>
+        <p class="card-text small">Visualiza el stock agrupado por rubro y exporta a Excel o PDF.</p>
+        <a href="{% url 'reporte_stock_rubro' %}" class="btn btn-outline-info mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Stock por bien">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-boxes-packing text-success"></i> Estado de stock por bien</h5>
+        <p class="card-text small">Consulta el stock disponible de cada bien y su historial de entregas.</p>
+        <a href="{% url 'reporte_stock_bien' %}" class="btn btn-outline-success mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Entregas por año">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-calendar-days text-warning"></i> Total de entregas por año</h5>
+        <p class="card-text small">Analiza las entregas realizadas cada año, agrupadas por rubro y bien.</p>
+        <a href="{% url 'reporte_entregas_anio' %}" class="btn btn-outline-warning mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Entregas por área/persona">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-users text-secondary"></i> Entregas por área/persona</h5>
+        <p class="card-text small">Consulta qué áreas o personas recibieron bienes y en qué cantidad.</p>
+        <a href="{% url 'reporte_entregas_area' %}" class="btn btn-outline-secondary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Ranking de bienes">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-ranking-star text-danger"></i> Ranking de bienes más entregados</h5>
+        <p class="card-text small">Descubre los bienes más entregados en el período seleccionado.</p>
+        <a href="{% url 'reporte_ranking_bienes' %}" class="btn btn-outline-danger mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100 shadow border-0">
+      <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Ranking de proveedores">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title"><i class="fa-solid fa-truck-field text-primary"></i> Ranking de proveedores</h5>
+        <p class="card-text small">Visualiza los proveedores con mayor volumen de bienes entregados.</p>
+        <a href="{% url 'reporte_ranking_proveedores' %}" class="btn btn-outline-primary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mb-4">
+  <div class="col-lg-10 mx-auto">
+    <div class="card shadow">
+      <div class="card-body">
+        <h3 class="mb-3"><i class="fa-solid fa-sliders text-primary"></i> Reporte personalizado</h3>
+        <form method="get" class="mb-3">
+  <div class="row g-2 align-items-end">
     <div class="col-md-2">{{ form.tipo.label_tag }} {{ form.tipo }}</div>
     <div class="col-md-2">{{ form.bien.label_tag }} {{ form.bien }}</div>
     <div class="col-md-2">{{ form.rubro.label_tag }} {{ form.rubro }}</div>
     <div class="col-md-2">{{ form.orden_de_compra.label_tag }} {{ form.orden_de_compra }}</div>
     <div class="col-md-2">{{ form.proveedor.label_tag }} {{ form.proveedor }}</div>
   </div>
-  <div class="row mt-2">
-    <div class="col-md-3">{{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}</div>
-    <div class="col-md-3">{{ form.fecha_fin.label_tag }} {{ form.fecha_fin }}</div>
-    <div class="col-md-3">{{ form.area_persona.label_tag }} {{ form.area_persona }}</div>
-    <div class="col-md-3">{{ form.precio_unitario_min.label_tag }} {{ form.precio_unitario_min }}</div>
-    <div class="col-md-3">{{ form.precio_unitario_max.label_tag }} {{ form.precio_unitario_max }}</div>
-  </div>
-</div>
-  <div class="row mt-2">
-    <div class="col-md-6">
-      <button type="submit" class="btn btn-primary">Filtrar</button>
-      <a href="?" class="btn btn-secondary ms-2">Limpiar filtros</a>
+  <div class="row g-2 mt-2 align-items-end">
+    <div class="col-md-2">{{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}</div>
+    <div class="col-md-2">{{ form.fecha_fin.label_tag }} {{ form.fecha_fin }}</div>
+    <div class="col-md-2">{{ form.area_persona.label_tag }} {{ form.area_persona }}</div>
+    <div class="col-md-2">{{ form.precio_unitario_min.label_tag }} {{ form.precio_unitario_min }}</div>
+    <div class="col-md-2">{{ form.precio_unitario_max.label_tag }} {{ form.precio_unitario_max }}</div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filtrar</button>
+      <a href="?" class="btn btn-secondary w-100"><i class="fa-solid fa-eraser"></i> Limpiar</a>
     </div>
   </div>
 </form>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% if resultados %}
 <div class="mb-2">
-  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
-  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=excel" class="btn btn-success btn-sm"><i class="fa-solid fa-file-excel"></i> Exportar a Excel</a>
+  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=pdf" class="btn btn-danger btn-sm"><i class="fa-solid fa-file-pdf"></i> Exportar a PDF</a>
 </div>
-<table class="table table-bordered table-sm">
-  <thead>
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-hover align-middle">
+  <thead class="table-primary">
     <tr>
-      <th>Bien</th>
-      <th>Rubro</th>
-      <th>Orden</th>
-      <th>Proveedor</th>
+      <th><i class="fa-solid fa-box"></i> Bien</th>
+      <th><i class="fa-solid fa-layer-group"></i> Rubro</th>
+      <th><i class="fa-solid fa-file-invoice"></i> Orden</th>
+      <th><i class="fa-solid fa-truck"></i> Proveedor</th>
       {% if form.cleaned_data.tipo == 'entregados' %}
-        <th>Fecha</th>
-        <th>Hora</th>
-        <th>Área/Persona</th>
+        <th><i class="fa-solid fa-calendar-day"></i> Fecha</th>
+        <th><i class="fa-solid fa-clock"></i> Hora</th>
+        <th><i class="fa-solid fa-user"></i> Área/Persona</th>
       {% endif %}
-      <th>Precio unitario</th>
-      <th>Cantidad</th>
-      <th>Precio total</th>
+      <th><i class="fa-solid fa-dollar-sign"></i> Precio unitario</th>
+      <th><i class="fa-solid fa-sort-numeric-up"></i> Cantidad</th>
+      <th><i class="fa-solid fa-money-bill-wave"></i> Precio total</th>
     </tr>
   </thead>
   <tbody>
@@ -77,7 +134,8 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% elif form.is_bound %}
-<div class="alert alert-warning">No hay resultados para los filtros seleccionados.</div>
+<div class="alert alert-warning"><i class="fa-solid fa-circle-exclamation"></i> No hay resultados para los filtros seleccionados.</div>
 {% endif %}
 {% endblock %}
