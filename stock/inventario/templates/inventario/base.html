@@ -52,6 +52,35 @@
     <a class="navbar-brand" href="/">
       <i class="fa-solid fa-warehouse icon-anim"></i> Stock de Almacenes
     </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'crear_entrega' %}">Nuevo Remito</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'agregar_rubro' %}">Agregar Rubro</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'agregar_bien' %}">Agregar Bien</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'ordenes' %}">Órdenes de Compra</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'reportes' %}">Reportes</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'agregar_orden' %}">Agregar Orden de Compra</a></li>
+      </ul>
+      <ul class="navbar-nav ms-auto flex-row align-items-center">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle fw-semibold" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-user"></i> {{ user.username }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+            <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="fa-solid fa-key me-2"></i>Cambiar contraseña</a></li>
+            {% if user.is_superuser or user.is_staff %}
+            <li><a class="dropdown-item" href="/admin/"><i class="fa-solid fa-shield-halved me-2"></i>Admin</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/accounts/logout/"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar sesión</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
   </div>
 </nav>
 <div class="container mb-5">
