@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Estado de Stock por Rubro</h2>
+<a href="?export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
+<a href="?export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+<br><br>
+{% for grupo in data %}
+  <h4>{{ grupo.rubro.nombre }}</h4>
+  <table class="table table-bordered table-sm">
+    <thead>
+      <tr>
+        <th>Bien</th>
+        <th>Stock</th>
+        <th>Total Entregado</th>
+        <th>Valor Entregado ($)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in grupo.bienes %}
+      <tr>
+        <td>{{ b.bien.nombre }}</td>
+        <td>{{ b.stock }}</td>
+        <td>{{ b.entregado }}</td>
+        <td>{{ b.valor|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endfor %}
+{% endblock %}

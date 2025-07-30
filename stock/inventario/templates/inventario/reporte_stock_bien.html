@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Estado de Stock por Bien</h2>
+<a href="?export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
+<a href="?export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+<br><br>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Rubro</th>
+      <th>Bien</th>
+      <th>Stock</th>
+      <th>Total Entregado</th>
+      <th>Valor Entregado ($)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data %}
+    <tr>
+      <td>{{ row.Rubro }}</td>
+      <td>{{ row.Bien }}</td>
+      <td>{{ row.Stock }}</td>
+      <td>{{ row.Total_Entregado }}</td>
+      <td>{{ row.Valor_Entregado|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

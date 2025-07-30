@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Entregas por Área / Persona</h2>
+<a href="?export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
+<a href="?export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+<br><br>
+<h4>Totales por área/persona</h4>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Área / Persona</th>
+      <th>Cantidad de Entregas</th>
+      <th>Monto Total ($)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data.totales %}
+    <tr>
+      <td>{{ row.area }}</td>
+      <td>{{ row.cantidad }}</td>
+      <td>{{ row.total|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h4>Detalle de bienes entregados</h4>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Área / Persona</th>
+      <th>Bien</th>
+      <th>Cantidad Entregada</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data.detalle %}
+    <tr>
+      <td>{{ row.area }}</td>
+      <td>{{ row.bien }}</td>
+      <td>{{ row.cantidad }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

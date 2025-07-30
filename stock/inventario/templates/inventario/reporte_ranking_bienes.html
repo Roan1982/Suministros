@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Ranking de bienes más entregados</h2>
+<a href="?export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
+<a href="?export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+<br><br>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Bien</th>
+      <th>Cantidad Entregada</th>
+      <th>Valor Total Entregado ($)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data %}
+    <tr>
+      <td>{{ row.bien }}</td>
+      <td>{{ row.cantidad }}</td>
+      <td>{{ row.valor|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

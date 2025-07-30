@@ -30,6 +30,619 @@ def api_ordenes_con_stock_bien(request, bien_id):
     return JsonResponse({'ordenes': ordenes})
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required
+
+# Página centralizada de reportes
+@login_required
+def reportes(request):
+    from .forms import ReportePersonalizadoForm
+    from .models import EntregaItem
+    from django.db.models import Q
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    form = ReportePersonalizadoForm(request.GET or None)
+    resultados = []
+    tipo = form.cleaned_data.get('tipo') if form.is_valid() else 'entregados'
+    if form.is_valid() and any(form.cleaned_data.values()):
+        filtros = Q()
+        cd = form.cleaned_data
+        if tipo == 'entregados':
+            if cd['bien']:
+                filtros &= Q(bien=cd['bien'])
+            if cd['rubro']:
+                filtros &= Q(bien__rubro=cd['rubro'])
+            if cd['orden_de_compra']:
+                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
+            if cd['proveedor']:
+                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
+            if cd['fecha_inicio']:
+                filtros &= Q(entrega__fecha__gte=cd['fecha_inicio'])
+            if cd['fecha_fin']:
+                filtros &= Q(entrega__fecha__lte=cd['fecha_fin'])
+            if cd['area_persona']:
+                filtros &= Q(entrega__area_persona__icontains=cd['area_persona'])
+            if cd['precio_unitario_min'] is not None:
+                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
+            if cd['precio_unitario_max'] is not None:
+                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
+            qs = EntregaItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'entrega', 'bien__rubro')
+            from django.utils.timezone import is_aware
+            for item in qs:
+                fecha = item.entrega.fecha if item.entrega else ''
+                fecha_str = ''
+                hora_str = ''
+                if fecha and hasattr(fecha, 'isoformat'):
+                    # Convertir a string sin zona horaria
+                    if is_aware(fecha):
+                        fecha = fecha.astimezone(None).replace(tzinfo=None)
+                    fecha_str = fecha.strftime('%Y-%m-%d')
+                    hora_str = fecha.strftime('%H:%M:%S')
+                resultados.append({
+                    'bien': item.bien.nombre,
+                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
+                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
+                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
+                    'fecha': fecha_str,
+                    'hora': hora_str,
+                    'area_persona': item.entrega.area_persona if item.entrega else '',
+                    'precio_unitario': item.precio_unitario,
+                    'cantidad': item.cantidad,
+                    'precio_total': item.precio_total,
+                })
+        elif tipo == 'comprados':
+            from .models import OrdenDeCompraItem
+            if cd['bien']:
+                filtros &= Q(bien=cd['bien'])
+            if cd['rubro']:
+                filtros &= Q(bien__rubro=cd['rubro'])
+            if cd['orden_de_compra']:
+                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
+            if cd['proveedor']:
+                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
+            if cd['precio_unitario_min'] is not None:
+                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
+            if cd['precio_unitario_max'] is not None:
+                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
+            qs = OrdenDeCompraItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'bien__rubro')
+            for item in qs:
+                resultados.append({
+                    'bien': item.bien.nombre,
+                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
+                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
+                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
+                    'precio_unitario': item.precio_unitario,
+                    'cantidad': item.cantidad,
+                    'precio_total': item.precio_total,
+                })
+        # Exportar si corresponde
+        if request.GET.get('export') == 'excel':
+            df = pd.DataFrame(resultados)
+            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = 'attachment; filename=personalizado.xlsx'
+            df.to_excel(response, index=False)
+            return response
+        if request.GET.get('export') == 'pdf':
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename=personalizado.pdf'
+            doc = SimpleDocTemplate(response, pagesize=letter)
+            elements = []
+            styles = getSampleStyleSheet()
+            elements.append(Paragraph('Reporte personalizado', styles['Title']))
+            elements.append(Spacer(1, 12))
+            if resultados:
+                # Encabezados legibles
+                headers = [
+                    'Bien', 'Rubro', 'Orden', 'Proveedor', 'Fecha', 'Hora', 'Área/Persona', 'Precio unitario', 'Cantidad', 'Precio total'
+                ]
+                table_data = [headers]
+                for row in resultados:
+                    table_data.append([
+                        row.get('bien',''), row.get('rubro',''), row.get('orden',''), row.get('proveedor',''),
+                        row.get('fecha',''), row.get('hora',''), row.get('area_persona',''), row.get('precio_unitario',''),
+                        row.get('cantidad',''), row.get('precio_total','')
+                    ])
+                # Ajustar anchos de columna para que encuadre bien
+                # Ajustar anchos para evitar superposición y centrar mejor
+                col_widths = [70, 60, 40, 70, 55, 45, 70, 50, 40, 60]
+                t = Table(table_data, repeatRows=1, colWidths=col_widths, hAlign='CENTER')
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                    ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                    ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                    ('GRID', (0,0), (-1,-1), 1, colors.black),
+                ]))
+                elements.append(t)
+            else:
+                elements.append(Paragraph('No hay resultados para los filtros seleccionados.', styles['Normal']))
+            doc.build(elements)
+            return response
+
+    return render(request, 'inventario/reportes.html', {'form': form, 'resultados': resultados})
+
+# Stubs de reportes (para evitar errores de import hasta implementar cada uno)
+@login_required
+def reporte_stock_rubro(request):
+    from .models import Rubro, Bien, EntregaItem
+    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    rubros = Rubro.objects.all().order_by('nombre')
+    data = []
+    excel_rows = []
+    for rubro in rubros:
+        bienes = Bien.objects.filter(rubro=rubro)
+        bienes_data = []
+        for bien in bienes:
+            comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            entregado = EntregaItem.objects.filter(bien=bien).aggregate(
+                total=Sum('cantidad'),
+                total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
+            )
+            stock = comprado - (entregado['total'] or 0)
+            row = {
+                'Rubro': rubro.nombre,
+                'Bien': bien.nombre,
+                'Stock': stock,
+                'Total Entregado': entregado['total'] or 0,
+                'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
+            }
+            bienes_data.append({
+                'bien': bien,
+                'stock': stock,
+                'entregado': entregado['total'] or 0,
+                'valor': entregado['total_pesos'] or 0,
+            })
+            excel_rows.append(row)
+        data.append({'rubro': rubro, 'bienes': bienes_data})
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_rubro.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_rubro.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Estado de Stock por Rubro', styles['Title']))
+        elements.append(Spacer(1, 12))
+        current_rubro = None
+        for row in excel_rows:
+            if row['Rubro'] != current_rubro:
+                if current_rubro is not None:
+                    elements.append(Spacer(1, 12))
+                elements.append(Paragraph(f"Rubro: {row['Rubro']}", styles['Heading3']))
+                table_data = [["Bien", "Stock", "Total Entregado", "Valor Entregado ($)"]]
+                current_rubro = row['Rubro']
+            table_data.append([row['Bien'], row['Stock'], row['Total Entregado'], f"{row['Valor Entregado ($)']:.2f}"])
+            # Si es el último bien del rubro o el último row, renderizar la tabla
+            next_row = excel_rows[excel_rows.index(row)+1] if excel_rows.index(row)+1 < len(excel_rows) else None
+            if not next_row or next_row['Rubro'] != current_rubro:
+                t = Table(table_data, repeatRows=1)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                    ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                    ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                    ('GRID', (0,0), (-1,-1), 1, colors.black),
+                ]))
+                elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_stock_rubro.html', {'data': data})
+
+@login_required
+def reporte_stock_bien(request):
+    from .models import Bien, EntregaItem, Rubro
+    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    bienes = Bien.objects.select_related('rubro').all().order_by('rubro__nombre', 'nombre')
+    data = []
+    excel_rows = []
+    for bien in bienes:
+        comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+        entregado = EntregaItem.objects.filter(bien=bien).aggregate(
+            total=Sum('cantidad'),
+            total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
+        )
+        stock = comprado - (entregado['total'] or 0)
+        row = {
+            'Rubro': bien.rubro.nombre if bien.rubro else '',
+            'Bien': bien.nombre,
+            'Stock': stock,
+            'Total_Entregado': entregado['total'] or 0,
+            'Valor_Entregado': float(entregado['total_pesos'] or 0),
+        }
+        data.append(row)
+        excel_rows.append({
+            'Rubro': bien.rubro.nombre if bien.rubro else '',
+            'Bien': bien.nombre,
+            'Stock': stock,
+            'Total Entregado': entregado['total'] or 0,
+            'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Estado de Stock por Bien', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Rubro", "Bien", "Stock", "Total Entregado", "Valor Entregado ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Rubro'], row['Bien'], row['Stock'], row['Total Entregado'], f"{row['Valor Entregado ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_stock_bien.html', {'data': data})
+
+@login_required
+def reporte_entregas_anio(request):
+    from .models import Entrega, EntregaItem
+    from django.db.models import Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from django.db.models.functions import ExtractYear
+
+    entregas = Entrega.objects.annotate(anio=ExtractYear('fecha'))
+    resumen = entregas.values('anio').annotate(
+        cantidad=Sum(1),
+        total=Sum('items__precio_total')
+    ).order_by('anio')
+
+    totales = []
+    excel_rows = []
+    for row in resumen:
+        totales.append({
+            'anio': row['anio'],
+            'cantidad': row['cantidad'],
+            'total': float(row['total'] or 0),
+        })
+        excel_rows.append({
+            'Año': row['anio'],
+            'Cantidad de Entregas': row['cantidad'],
+            'Monto Total ($)': float(row['total'] or 0),
+        })
+
+    # Detalle por rubro y bien del último año
+    ultimo_anio = max([r['anio'] for r in totales if r['anio'] is not None], default=None)
+    detalle = []
+    if ultimo_anio:
+        from .models import Bien, Rubro
+        items = EntregaItem.objects.filter(entrega__fecha__year=ultimo_anio)
+        bienes = Bien.objects.select_related('rubro').all()
+        for bien in bienes:
+            cantidad = items.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            total = items.filter(bien=bien).aggregate(suma=Sum('precio_total'))['suma'] or 0
+            if cantidad > 0:
+                detalle.append({
+                    'rubro': bien.rubro.nombre if bien.rubro else '',
+                    'bien': bien.nombre,
+                    'cantidad': cantidad,
+                    'total': float(total),
+                })
+
+    data = {'totales': totales, 'detalle': detalle, 'ultimo_anio': ultimo_anio}
+
+    if request.GET.get('export') == 'excel':
+        # Exportar ambos: totales y detalle
+        with pd.ExcelWriter('entregas_por_anio.xlsx', engine='openpyxl') as writer:
+            pd.DataFrame(excel_rows).to_excel(writer, sheet_name='Totales por año', index=False)
+            pd.DataFrame(detalle).to_excel(writer, sheet_name='Detalle último año', index=False)
+            writer.save()
+            with open('entregas_por_anio.xlsx', 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = 'attachment; filename=entregas_por_anio.xlsx'
+                return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=entregas_por_anio.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Entregas por Año', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Año", "Cantidad de Entregas", "Monto Total ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Año'], row['Cantidad de Entregas'], f"{row['Monto Total ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        elements.append(Spacer(1, 24))
+        elements.append(Paragraph(f'Detalle por rubro y bien (último año: {ultimo_anio})', styles['Heading3']))
+        table_data2 = [["Rubro", "Bien", "Cantidad Entregada", "Monto Total ($)"]]
+        for row in detalle:
+            table_data2.append([row['rubro'], row['bien'], row['cantidad'], f"{row['total']:.2f}"])
+        t2 = Table(table_data2, repeatRows=1)
+        t2.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t2)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_entregas_anio.html', {'data': data})
+
+@login_required
+def reporte_entregas_area(request):
+    from .models import Entrega
+    from django.db.models import Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Totales por área/persona
+    resumen = Entrega.objects.values('area_persona').annotate(
+        cantidad=Sum(1),
+        total=Sum('items__precio_total')
+    ).order_by('area_persona')
+
+    totales = []
+    for row in resumen:
+        totales.append({
+            'area': row['area_persona'],
+            'cantidad': row['cantidad'],
+            'total': float(row['total'] or 0),
+        })
+
+    # Detalle de bienes entregados por área/persona
+    detalle_qs = EntregaItem.objects.values('entrega__area_persona', 'bien__nombre').annotate(
+        cantidad=Sum('cantidad')
+    ).order_by('entrega__area_persona', 'bien__nombre')
+
+    detalle = []
+    for row in detalle_qs:
+        detalle.append({
+            'area': row['entrega__area_persona'],
+            'bien': row['bien__nombre'],
+            'cantidad': row['cantidad'],
+        })
+
+    # Para exportar a Excel
+    if request.GET.get('export') == 'excel':
+        # Dos hojas: Totales y Detalle
+        with pd.ExcelWriter('entregas_por_area_temp.xlsx', engine='openpyxl') as writer:
+            df_totales = pd.DataFrame([{ 'Área / Persona': t['area'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total'] } for t in totales])
+            df_detalle = pd.DataFrame([{ 'Área / Persona': d['area'], 'Bien': d['bien'], 'Cantidad Entregada': d['cantidad'] } for d in detalle])
+            df_totales.to_excel(writer, sheet_name='Totales', index=False)
+            df_detalle.to_excel(writer, sheet_name='Detalle', index=False)
+            writer.save()
+        with open('entregas_por_area_temp.xlsx', 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = 'attachment; filename=entregas_por_area.xlsx'
+            return response
+
+    # Para exportar a PDF
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=entregas_por_area.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Entregas por Área / Persona', styles['Title']))
+        elements.append(Spacer(1, 12))
+        # Totales
+        elements.append(Paragraph('Totales por área/persona', styles['Heading2']))
+        table_data = [["Área / Persona", "Cantidad de Entregas", "Monto Total ($)"]]
+        for t in totales:
+            table_data.append([t['area'], t['cantidad'], f"{t['total']:.2f}"])
+        t1 = Table(table_data, repeatRows=1)
+        t1.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t1)
+        elements.append(Spacer(1, 18))
+        # Detalle
+        elements.append(Paragraph('Detalle de bienes entregados', styles['Heading2']))
+        table_data2 = [["Área / Persona", "Bien", "Cantidad Entregada"]]
+        for d in detalle:
+            table_data2.append([d['area'], d['bien'], d['cantidad']])
+        t2 = Table(table_data2, repeatRows=1)
+        t2.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t2)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_entregas_area.html', {'data': {'totales': totales, 'detalle': detalle}})
+
+@login_required
+def reporte_ranking_bienes(request):
+    from .models import Bien, EntregaItem
+    from django.db.models import Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    ranking = EntregaItem.objects.values('bien__nombre').annotate(
+        cantidad=Sum('cantidad'),
+        valor=Sum('precio_total')
+    ).order_by('-cantidad')
+
+    data = []
+    for row in ranking:
+        data.append({
+            'bien': row['bien__nombre'],
+            'cantidad': row['cantidad'],
+            'valor': float(row['valor'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame([{ 'Bien': d['bien'], 'Cantidad Entregada': d['cantidad'], 'Valor Total Entregado ($)': d['valor'] } for d in data])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=ranking_bienes.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=ranking_bienes.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Ranking de bienes más entregados', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Bien", "Cantidad Entregada", "Valor Total Entregado ($)"]]
+        for d in data:
+            table_data.append([d['bien'], d['cantidad'], f"{d['valor']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_ranking_bienes.html', {'data': data})
+
+@login_required
+def reporte_ranking_proveedores(request):
+    from .models import EntregaItem
+    from django.db.models import Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Agrupar por proveedor (campo de texto en OrdenDeCompra)
+    ranking = EntregaItem.objects.values('orden_de_compra__proveedor').annotate(
+        cantidad=Sum('cantidad'),
+        valor=Sum('precio_total')
+    ).order_by('-valor')
+
+    data = []
+    for row in ranking:
+        data.append({
+            'proveedor': row['orden_de_compra__proveedor'] or '(Sin proveedor)',
+            'cantidad': row['cantidad'],
+            'valor': float(row['valor'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame([{ 'Proveedor': d['proveedor'], 'Cantidad de Bienes Entregados': d['cantidad'], 'Valor Total Entregado ($)': d['valor'] } for d in data])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=ranking_proveedores.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=ranking_proveedores.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Ranking de proveedores', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Proveedor", "Cantidad de Bienes Entregados", "Valor Total Entregado ($)"]]
+        for d in data:
+            table_data.append([d['proveedor'], d['cantidad'], f"{d['valor']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_ranking_proveedores.html', {'data': data})
 from django.http import JsonResponse, HttpResponse
 from django import forms
 from django.forms import inlineformset_factory

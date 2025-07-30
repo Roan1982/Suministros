@@ -22,4 +22,11 @@ urlpatterns = [
     path('api/orden_bienes/<int:orden_id>/', views.api_orden_bienes, name='api_orden_bienes'),
     path('api/orden_precio/<int:orden_id>/<int:bien_id>/', views.api_orden_precio, name='api_orden_precio'),
     path('api/ordenes_con_stock_bien/<int:bien_id>/', views.api_ordenes_con_stock_bien, name='api_ordenes_con_stock_bien'),
+    path('reportes/', views.reportes, name='reportes'),
+    path('reportes/stock_rubro/', views.reporte_stock_rubro, name='reporte_stock_rubro'),
+    path('reportes/stock_bien/', views.reporte_stock_bien, name='reporte_stock_bien'),
+    path('reportes/entregas_anio/', views.reporte_entregas_anio, name='reporte_entregas_anio'),
+    path('reportes/entregas_area/', views.reporte_entregas_area, name='reporte_entregas_area'),
+    path('reportes/ranking_bienes/', views.reporte_ranking_bienes, name='reporte_ranking_bienes'),
+    path('reportes/ranking_proveedores/', views.reporte_ranking_proveedores, name='reporte_ranking_proveedores'),
 ]

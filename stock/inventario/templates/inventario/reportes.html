@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Reportes</h1>
+<ul>
+  <li><a href="{% url 'reporte_stock_rubro' %}">Estado de stock por rubro</a></li>
+  <li><a href="{% url 'reporte_stock_bien' %}">Estado de stock por bien</a></li>
+  <li><a href="{% url 'reporte_entregas_anio' %}">Total de entregas por año</a></li>
+  <li><a href="{% url 'reporte_entregas_area' %}">Entregas por área/persona</a></li>
+  <li><a href="{% url 'reporte_ranking_bienes' %}">Ranking de bienes más entregados</a></li>
+  <li><a href="{% url 'reporte_ranking_proveedores' %}">Ranking de proveedores</a></li>
+</ul>
+<p>Selecciona un reporte para exportar a Excel o PDF.</p>
+<hr>
+<h3>Reporte personalizado</h3>
+<form method="get" class="mb-3">
+  <div class="row">
+    <div class="col-md-2">{{ form.tipo.label_tag }} {{ form.tipo }}</div>
+    <div class="col-md-2">{{ form.bien.label_tag }} {{ form.bien }}</div>
+    <div class="col-md-2">{{ form.rubro.label_tag }} {{ form.rubro }}</div>
+    <div class="col-md-2">{{ form.orden_de_compra.label_tag }} {{ form.orden_de_compra }}</div>
+    <div class="col-md-2">{{ form.proveedor.label_tag }} {{ form.proveedor }}</div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-md-3">{{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}</div>
+    <div class="col-md-3">{{ form.fecha_fin.label_tag }} {{ form.fecha_fin }}</div>
+    <div class="col-md-3">{{ form.area_persona.label_tag }} {{ form.area_persona }}</div>
+    <div class="col-md-3">{{ form.precio_unitario_min.label_tag }} {{ form.precio_unitario_min }}</div>
+    <div class="col-md-3">{{ form.precio_unitario_max.label_tag }} {{ form.precio_unitario_max }}</div>
+  </div>
+</div>
+  <div class="row mt-2">
+    <div class="col-md-6">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="?" class="btn btn-secondary ms-2">Limpiar filtros</a>
+    </div>
+  </div>
+</form>
+
+{% if resultados %}
+<div class="mb-2">
+  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
+  <a href="?{% for k,v in request.GET.items %}{% if k != 'export' %}{{k}}={{v|urlencode}}&{% endif %}{% endfor %}export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
+</div>
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Bien</th>
+      <th>Rubro</th>
+      <th>Orden</th>
+      <th>Proveedor</th>
+      {% if form.cleaned_data.tipo == 'entregados' %}
+        <th>Fecha</th>
+        <th>Hora</th>
+        <th>Área/Persona</th>
+      {% endif %}
+      <th>Precio unitario</th>
+      <th>Cantidad</th>
+      <th>Precio total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in resultados %}
+    <tr>
+      <td>{{ row.bien }}</td>
+      <td>{{ row.rubro }}</td>
+      <td>{{ row.orden }}</td>
+      <td>{{ row.proveedor }}</td>
+      {% if form.cleaned_data.tipo == 'entregados' %}
+        <td>{{ row.fecha }}</td>
+        <td>{{ row.hora }}</td>
+        <td>{{ row.area_persona }}</td>
+      {% endif %}
+      <td>{{ row.precio_unitario }}</td>
+      <td>{{ row.cantidad }}</td>
+      <td>{{ row.precio_total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% elif form.is_bound %}
+<div class="alert alert-warning">No hay resultados para los filtros seleccionados.</div>
+{% endif %}
+{% endblock %}
