@@ -1,12 +1,96 @@
-{% extends 'base.html' %}
+{% extends 'inventario/base.html' %}
+{% load static %}
 {% block content %}
-{% if request.GET.logout %}
-<div class="alert alert-info text-center">Sesión cerrada correctamente.</div>
-{% endif %}
-<h2>Iniciar sesión</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit" class="btn btn-primary">Entrar</button>
-</form>
+<style>
+  .login-card {
+    max-width: 400px;
+    margin: 60px auto 0 auto;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+    background: #fff;
+    padding: 2.5rem 2rem 2rem 2rem;
+    animation: fadeInLogin 1.2s cubic-bezier(.39,.58,.57,1.01);
+  }
+  @keyframes fadeInLogin {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .login-logo {
+    display: block;
+    margin: 0 auto 1.2rem auto;
+    width: 110px;
+    height: auto;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
+    animation: logoPop 1.2s cubic-bezier(.39,.58,.57,1.01);
+  }
+  @keyframes logoPop {
+    0% { transform: scale(0.7) rotate(-8deg); opacity: 0; }
+    60% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0d6efd;
+    text-align: center;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+  }
+  .login-form label {
+    font-weight: 500;
+    color: #0d6efd;
+  }
+  .login-form input {
+    border-radius: 1.5rem;
+    border: 1.5px solid #b6d4fe;
+    background: #f8fafc;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+  }
+  .login-form input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.15rem #0d6efd33;
+  }
+  .login-btn {
+    width: 100%;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    background: linear-gradient(90deg, #0d6efd 60%, #0a58ca 100%);
+    border: none;
+    box-shadow: 0 2px 12px rgba(13,110,253,0.10);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .login-btn:hover {
+    background: linear-gradient(90deg, #0a58ca 60%, #0d6efd 100%);
+    box-shadow: 0 4px 24px rgba(13,110,253,0.18);
+  }
+  .login-alert {
+    margin-bottom: 1.2rem;
+    border-radius: 1rem;
+    font-size: 1.1rem;
+  }
+</style>
+<div class="login-card">
+  <img src="{% static 'inventario/logo_jefatura.png' %}" alt="Vicejefatura de Gabinete del Interior" class="login-logo">
+  <div class="login-title">Iniciar sesión</div>
+  {% if request.GET.logout %}
+    <div class="alert alert-info text-center login-alert">Sesión cerrada correctamente.</div>
+  {% endif %}
+  {% if form.errors %}
+    <div class="alert alert-danger text-center login-alert">Usuario o contraseña incorrectos.</div>
+  {% endif %}
+  <form method="post" class="login-form">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="id_username">Usuario</label>
+      <input type="text" name="username" class="form-control" id="id_username" required autofocus value="{{ form.username.value|default:'' }}">
+    </div>
+    <div class="mb-3">
+      <label for="id_password">Contraseña</label>
+      <input type="password" name="password" class="form-control" id="id_password" required>
+    </div>
+    <button type="submit" class="btn btn-primary login-btn">Entrar</button>
+  </form>
+</div>
 {% endblock %}
