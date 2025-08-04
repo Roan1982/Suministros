@@ -800,7 +800,7 @@ def agregar_rubro(request):
             return redirect('dashboard')
     else:
         form = RubroForm()
-    return render(request, 'inventario/form.html', {'form': form, 'titulo': 'Agregar Rubro'})
+    return render(request, 'inventario/agregar_rubro.html', {'form': form, 'titulo': 'Agregar Rubro'})
 
 @login_required
 def agregar_bien(request):
