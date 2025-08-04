@@ -13,7 +13,7 @@ from inventario.models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem
 
 # Ruta del archivo Excel
 
-archivo = "almacenes.xlsx"  # Debe estar en la carpeta 'stock'
+archivo = "stock/almacenes.xlsx"  # Debe estar en la carpeta 'stock'
 if not os.path.exists(archivo):
     raise FileNotFoundError(f"No se encontró el archivo {archivo} en {os.getcwd()}")
 df = pd.read_excel(archivo)

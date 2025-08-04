@@ -29,4 +29,5 @@ urlpatterns = [
     path('reportes/entregas_area/', views.reporte_entregas_area, name='reporte_entregas_area'),
     path('reportes/ranking_bienes/', views.reporte_ranking_bienes, name='reporte_ranking_bienes'),
     path('reportes/ranking_proveedores/', views.reporte_ranking_proveedores, name='reporte_ranking_proveedores'),
+    path('reportes/personalizado/', views.reporte_personalizado, name='reporte_personalizado'),
 ]

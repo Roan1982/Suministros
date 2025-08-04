@@ -1,3 +1,88 @@
+# Vista para reporte personalizado
+from .forms import ReportePersonalizadoForm
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def reporte_personalizado(request):
+    form = ReportePersonalizadoForm(request.GET or None)
+    resultados = []
+    tipo = form.cleaned_data.get('tipo') if form.is_valid() else 'entregados'
+    if form.is_valid() and any(form.cleaned_data.values()):
+        filtros = Q()
+        cd = form.cleaned_data
+        if tipo == 'entregados':
+            from .models import EntregaItem
+            if cd['bien']:
+                filtros &= Q(bien=cd['bien'])
+            if cd['rubro']:
+                filtros &= Q(bien__rubro=cd['rubro'])
+            if cd['orden_de_compra']:
+                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
+            if cd['proveedor']:
+                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
+            if cd['fecha_inicio']:
+                filtros &= Q(entrega__fecha__gte=cd['fecha_inicio'])
+            if cd['fecha_fin']:
+                filtros &= Q(entrega__fecha__lte=cd['fecha_fin'])
+            if cd['area_persona']:
+                filtros &= Q(entrega__area_persona__icontains=cd['area_persona'])
+            if cd['precio_unitario_min'] is not None:
+                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
+            if cd['precio_unitario_max'] is not None:
+                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
+            qs = EntregaItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'entrega', 'bien__rubro')
+            from django.utils.timezone import is_aware
+            for item in qs:
+                fecha = item.entrega.fecha if item.entrega else ''
+                fecha_str = ''
+                hora_str = ''
+                if fecha and hasattr(fecha, 'isoformat'):
+                    if is_aware(fecha):
+                        fecha = fecha.astimezone(None).replace(tzinfo=None)
+                    fecha_str = fecha.strftime('%Y-%m-%d')
+                    hora_str = fecha.strftime('%H:%M:%S')
+                resultados.append({
+                    'bien': item.bien.nombre,
+                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
+                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
+                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
+                    'fecha': fecha_str,
+                    'hora': hora_str,
+                    'area_persona': item.entrega.area_persona if item.entrega else '',
+                    'precio_unitario': item.precio_unitario,
+                    'cantidad': item.cantidad,
+                    'precio_total': item.precio_total,
+                })
+        elif tipo == 'comprados':
+            from .models import OrdenDeCompraItem
+            if cd['bien']:
+                filtros &= Q(bien=cd['bien'])
+            if cd['rubro']:
+                filtros &= Q(bien__rubro=cd['rubro'])
+            if cd['orden_de_compra']:
+                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
+            if cd['proveedor']:
+                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
+            if cd['precio_unitario_min'] is not None:
+                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
+            if cd['precio_unitario_max'] is not None:
+                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
+            qs = OrdenDeCompraItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'bien__rubro')
+            for item in qs:
+                resultados.append({
+                    'bien': item.bien.nombre,
+                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
+                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
+                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
+                    'fecha': '',
+                    'hora': '',
+                    'area_persona': '',
+                    'precio_unitario': item.precio_unitario,
+                    'cantidad': item.cantidad,
+                    'precio_total': item.precio_total,
+                })
+    return render(request, 'inventario/reporte_personalizado.html', {'form': form, 'resultados': resultados})
 from django.db.models import F, Sum
 # API para AJAX: órdenes de compra con stock disponible para un bien
 from django.http import JsonResponse

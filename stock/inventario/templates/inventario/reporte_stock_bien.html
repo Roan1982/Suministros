@@ -1,29 +1,93 @@
-{% extends 'base.html' %}
+{% extends 'inventario/base.html' %}
 {% block content %}
-<h2>Estado de Stock por Bien</h2>
-<a href="?export=excel" class="btn btn-success btn-sm">Exportar a Excel</a>
-<a href="?export=pdf" class="btn btn-danger btn-sm">Exportar a PDF</a>
-<br><br>
-<table class="table table-bordered table-sm">
-  <thead>
-    <tr>
-      <th>Rubro</th>
-      <th>Bien</th>
-      <th>Stock</th>
-      <th>Total Entregado</th>
-      <th>Valor Entregado ($)</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for row in data %}
-    <tr>
-      <td>{{ row.Rubro }}</td>
-      <td>{{ row.Bien }}</td>
-      <td>{{ row.Stock }}</td>
-      <td>{{ row.Total_Entregado }}</td>
-      <td>{{ row.Valor_Entregado|floatformat:2 }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="row justify-content-center mb-4">
+  <div class="col-lg-10">
+    <div class="card shadow-lg border-0 animate__animated animate__fadeIn">
+      <div class="card-body p-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+          <h2 class="fw-bold text-primary mb-0">
+            <i class="fa-solid fa-boxes-stacked me-2"></i>Estado de Stock por Bien
+          </h2>
+          <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="?export=excel" class="btn btn-success btn-sm fw-bold px-4 shadow-sm"><i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel</a>
+            <a href="?export=pdf" class="btn btn-danger btn-sm fw-bold px-4 shadow-sm"><i class="fa-solid fa-file-pdf me-2"></i>Exportar a PDF</a>
+          </div>
+        </div>
+        <div class="table-responsive mb-4">
+          <table class="table table-bordered table-striped table-hover align-middle" id="bien-table">
+            <thead class="table-primary">
+              <tr>
+                <th><i class="fa-solid fa-layer-group"></i> Rubro</th>
+                <th><i class="fa-solid fa-box"></i> Bien</th>
+                <th><i class="fa-solid fa-cubes"></i> Stock</th>
+                <th><i class="fa-solid fa-truck"></i> Total Entregado</th>
+                <th><i class="fa-solid fa-dollar-sign"></i> Valor Entregado ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in data %}
+              <tr class="bien-row">
+                <td>{{ row.Rubro }}</td>
+                <td>{{ row.Bien }}</td>
+                <td>{{ row.Stock }}</td>
+                <td>{{ row.Total_Entregado }}</td>
+                <td>${{ row.Valor_Entregado|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+<nav>
+  <ul class="pagination flex-wrap justify-content-center" id="bien-pagination"></ul>
+</nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const PAGE_SIZE = 20;
+  let currentPage = 1;
+  const rows = Array.from(document.querySelectorAll('.bien-row'));
+  const pagContainer = document.getElementById('bien-pagination');
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+
+  function renderPage(page) {
+    rows.forEach((row, i) => {
+      row.style.display = (i >= (page-1)*PAGE_SIZE && i < page*PAGE_SIZE) ? '' : 'none';
+    });
+    renderPagination(page);
+  }
+
+  function renderPagination(page) {
+    if (!pagContainer) return;
+    pagContainer.innerHTML = '';
+    if (totalPages <= 1) return;
+    // Prev
+    const prevLi = document.createElement('li');
+    prevLi.className = 'page-item' + (page === 1 ? ' disabled' : '');
+    prevLi.innerHTML = `<a class="page-link" href="#" tabindex="-1">&laquo;</a>`;
+    prevLi.onclick = function(e) { e.preventDefault(); if (page > 1) { currentPage--; renderPage(currentPage); } };
+    pagContainer.appendChild(prevLi);
+    // Pages
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement('li');
+      li.className = 'page-item' + (i === page ? ' active' : '');
+      li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+      li.onclick = function(e) { e.preventDefault(); currentPage = i; renderPage(currentPage); };
+      pagContainer.appendChild(li);
+    }
+    // Next
+    const nextLi = document.createElement('li');
+    nextLi.className = 'page-item' + (page === totalPages ? ' disabled' : '');
+    nextLi.innerHTML = `<a class="page-link" href="#">&raquo;</a>`;
+    nextLi.onclick = function(e) { e.preventDefault(); if (page < totalPages) { currentPage++; renderPage(currentPage); } };
+    pagContainer.appendChild(nextLi);
+  }
+
+  renderPage(currentPage);
+});
+</script>
 {% endblock %}
