@@ -1,5 +1,9 @@
 {% extends 'inventario/base.html' %}
 {% load form_extras %}
+{% block extra_head %}
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css" rel="stylesheet" />
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-10 col-xl-8">
@@ -37,7 +41,7 @@
                 <tbody id="items-table-body">
                   {% for f in formset %}
                   <tr class="form-row">
-                    <td>{{ f.bien|add_class:'bien-select' }}</td>
+                    <td>{{ f.bien|add_class:'bien-select form-control' }}</td>
                     <td>{{ f.orden_de_compra|add_class:'orden-select form-control' }}</td>
                     <td>{{ f.cantidad }}</td>
                     <td>
@@ -106,23 +110,20 @@ function debugFormset() {
     console.log('=== FIN DEBUG ===');
 }
 </script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="/static/inventario/mayusculas.js"></script>
 <script src="/static/inventario/orden_api.js"></script>
 <script src="/static/inventario/entrega_bien_orden.js"></script>
 <script src="/static/inventario/formset_dynamic.js"></script>
+<script src="/static/inventario/select2_bien_orden.js"></script>
 <script>
-setInputsToUpperCase('form');
-// Auto-expand textarea Observaciones
-function autoExpand(textarea) {
-  textarea.style.height = 'auto';
-  textarea.style.height = (textarea.scrollHeight) + 'px';
-}
 document.addEventListener('DOMContentLoaded', function() {
+  setInputsToUpperCase('form');
+  // Auto-expand textarea Observaciones
   var obs = document.getElementById('id_observaciones');
   if (obs) autoExpand(obs);
-});
-// Eliminar fila de item dinámicamente
-document.addEventListener('DOMContentLoaded', function() {
+  // Eliminar fila de item dinámicamente
   document.querySelectorAll('.delete-row').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       const row = e.target.closest('tr');
@@ -136,6 +137,15 @@ document.addEventListener('DOMContentLoaded', function() {
       if (row) row.remove();
     }
   });
+  if (typeof aplicarSelect2BienOrden === 'function') {
+    aplicarSelect2BienOrden();
+  } else {
+    console.error('aplicarSelect2BienOrden no está definida');
+  }
 });
+function autoExpand(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = (textarea.scrollHeight) + 'px';
+}
 </script>
 {% endblock %}

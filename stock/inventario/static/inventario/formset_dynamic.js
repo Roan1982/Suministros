@@ -121,6 +121,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Enlazar eventos a la nueva fila
         enlazarEventosFila(newRow);
+        // Disparar evento para select2
+        if (window.jQuery) {
+            var $row = window.jQuery(newRow);
+            window.jQuery(document).trigger('formset:added', [$row, 'items']);
+        }
     });
 
     // Enlazar eventos a todas las filas existentes
