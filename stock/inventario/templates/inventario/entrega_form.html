@@ -106,10 +106,12 @@ function debugFormset() {
     console.log('=== FIN DEBUG ===');
 }
 </script>
+<script src="/static/inventario/mayusculas.js"></script>
 <script src="/static/inventario/orden_api.js"></script>
 <script src="/static/inventario/entrega_bien_orden.js"></script>
 <script src="/static/inventario/formset_dynamic.js"></script>
 <script>
+setInputsToUpperCase('form');
 // Auto-expand textarea Observaciones
 function autoExpand(textarea) {
   textarea.style.height = 'auto';
@@ -119,8 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
   var obs = document.getElementById('id_observaciones');
   if (obs) autoExpand(obs);
 });
-</script>
-<script>
 // Eliminar fila de item dinámicamente
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.delete-row').forEach(function(btn) {
