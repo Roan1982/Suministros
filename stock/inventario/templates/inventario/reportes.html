@@ -1,4 +1,5 @@
 {% extends 'inventario/base.html' %}
+{% load form_extras %}
 {% block content %}
 <div class="row mb-4 g-4 justify-content-center">
   <div class="col-md-4 col-lg-3">
@@ -68,25 +69,77 @@
       <div class="card-body">
         <h3 class="mb-3"><i class="fa-solid fa-sliders text-primary"></i> Reporte personalizado</h3>
         <form method="get" class="mb-3">
-  <div class="row g-2 align-items-end">
-    <div class="col-md-2">{{ form.tipo.label_tag }} {{ form.tipo }}</div>
-    <div class="col-md-2">{{ form.bien.label_tag }} {{ form.bien }}</div>
-    <div class="col-md-2">{{ form.rubro.label_tag }} {{ form.rubro }}</div>
-    <div class="col-md-2">{{ form.orden_de_compra.label_tag }} {{ form.orden_de_compra }}</div>
-    <div class="col-md-2">{{ form.proveedor.label_tag }} {{ form.proveedor }}</div>
-  </div>
-  <div class="row g-2 mt-2 align-items-end">
-    <div class="col-md-2">{{ form.fecha_inicio.label_tag }} {{ form.fecha_inicio }}</div>
-    <div class="col-md-2">{{ form.fecha_fin.label_tag }} {{ form.fecha_fin }}</div>
-    <div class="col-md-2">{{ form.area_persona.label_tag }} {{ form.area_persona }}</div>
-    <div class="col-md-2">{{ form.precio_unitario_min.label_tag }} {{ form.precio_unitario_min }}</div>
-    <div class="col-md-2">{{ form.precio_unitario_max.label_tag }} {{ form.precio_unitario_max }}</div>
-    <div class="col-md-2 d-flex gap-2">
-      <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filtrar</button>
-      <a href="?" class="btn btn-secondary w-100"><i class="fa-solid fa-eraser"></i> Limpiar</a>
-    </div>
-  </div>
-</form>
+          <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.tipo.label }}</label>
+              {{ form.tipo|add_class:'form-select select2-filter' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.bien.label }}</label>
+              {{ form.bien|add_class:'form-select select2-filter' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.rubro.label }}</label>
+              {{ form.rubro|add_class:'form-select select2-filter' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.orden_de_compra.label }}</label>
+              {{ form.orden_de_compra|add_class:'form-select select2-filter' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.proveedor.label }}</label>
+              {{ form.proveedor|add_class:'form-select select2-filter' }}
+            </div>
+          </div>
+          <div class="row g-3 mt-2 align-items-end">
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.fecha_inicio.label }}</label>
+              {{ form.fecha_inicio|add_class:'form-control' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.fecha_fin.label }}</label>
+              {{ form.fecha_fin|add_class:'form-control' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.area_persona.label }}</label>
+              {{ form.area_persona|add_class:'form-select select2-filter' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.precio_unitario_min.label }}</label>
+              {{ form.precio_unitario_min|add_class:'form-control' }}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold">{{ form.precio_unitario_max.label }}</label>
+              {{ form.precio_unitario_max|add_class:'form-control' }}
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12 d-flex justify-content-center gap-3">
+              <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm d-flex align-items-center">
+                <i class="fa-solid fa-filter me-2"></i>Filtrar
+              </button>
+              <a href="?" class="btn btn-outline-secondary btn-sm px-4 fw-bold shadow-sm d-flex align-items-center">
+                <i class="fa-solid fa-eraser me-2"></i>Limpiar
+              </a>
+            </div>
+          </div>
+          </div>
+        </form>
+{% block extra_js %}
+<script>
+  window.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery && window.jQuery.fn.select2) {
+      window.jQuery('.select2-filter').select2({
+        width: '100%',
+        theme: 'bootstrap-5',
+        placeholder: 'Seleccione...',
+        allowClear: true,
+        language: 'es'
+      });
+    }
+  });
+</script>
+{% endblock %}
       </div>
     </div>
   </div>
