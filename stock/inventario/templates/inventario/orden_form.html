@@ -55,7 +55,9 @@
                 <thead class="table-primary">
                   <tr>
                     {% for field in formset.empty_form.visible_fields %}
-                      <th style="white-space:nowrap;">{{ field.label }}</th>
+                      {% if field.name != 'DELETE' %}
+                        <th style="white-space:nowrap;">{{ field.label }}</th>
+                      {% endif %}
                     {% endfor %}
                     <th style="min-width:60px;text-align:center;">Eliminar</th>
                   </tr>
@@ -64,10 +66,14 @@
                   {% for form in formset.forms %}
                     <tr class="item-form-row">
                       {% for field in form.visible_fields %}
-                        <td style="min-width:120px;vertical-align:middle;">{{ field }}</td>
+                        {% if field.name != 'DELETE' %}
+                          <td style="min-width:120px;vertical-align:middle;">{{ field }}</td>
+                        {% endif %}
                       {% endfor %}
                       <td style="vertical-align:middle;text-align:center;min-width:60px;">
-                        <button type="button" class="btn btn-danger btn-sm remove-row" tabindex="-1"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
                         {{ form.DELETE.as_hidden }}
                       </td>
                     </tr>
@@ -108,8 +114,20 @@ document.addEventListener('DOMContentLoaded', function() {
   const addRowBtn = document.getElementById('add-row');
   const table = document.getElementById('items-table').getElementsByTagName('tbody')[0];
   const totalForms = document.getElementById('id_items-TOTAL_FORMS');
-  // Renderizar la fila vacía como HTML de tabla
-  const emptyRowHtml = `{% for field in formset.empty_form.visible_fields %}<td>{{ field }}</td>{% endfor %}<td style="vertical-align:middle;text-align:center;min-width:60px;"><button type="button" class="btn btn-danger btn-sm remove-row" tabindex="-1"><i class="fa-solid fa-trash"></i></button></td>`;
+
+  // Renderizar la fila vacía con clases y select2 igual que la primera
+  const emptyRowHtml = `
+    <td>{{ formset.empty_form.renglon }}</td>
+    <td>{{ formset.empty_form.bien }}</td>
+    <td>{{ formset.empty_form.cantidad }}</td>
+    <td>{{ formset.empty_form.precio_unitario }}</td>
+    <td style="vertical-align:middle;text-align:center;min-width:60px;">
+      <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+      {{ formset.empty_form.DELETE.as_hidden }}
+    </td>
+  `;
 
   addRowBtn.addEventListener('click', function() {
     const formNum = parseInt(totalForms.value);
@@ -119,10 +137,22 @@ document.addEventListener('DOMContentLoaded', function() {
     tr.innerHTML = rowHtml;
     table.appendChild(tr);
     totalForms.value = formNum + 1;
+    // Agregar clases y select2 al nuevo select bien
+    const bienSelect = tr.querySelector("select[name$='-bien']");
+    if (bienSelect) {
+      bienSelect.classList.add('bien-select', 'form-control');
+      $(bienSelect).select2({
+        width: '100%',
+        theme: 'bootstrap-5',
+        placeholder: 'Seleccione un bien',
+        allowClear: true,
+        language: 'es'
+      });
+    }
   });
 
   table.addEventListener('click', function(e) {
-    if (e.target.classList.contains('remove-row')) {
+    if (e.target.closest('.delete-row')) {
       const row = e.target.closest('tr');
       // Si hay un input DELETE oculto, marcarlo y ocultar la fila
       const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');

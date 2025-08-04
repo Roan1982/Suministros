@@ -89,14 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Buscar la primera fila de item
         const rows = Array.from(formsetTable.querySelectorAll('.form-row'));
         console.log('Filas encontradas:', rows.length);
-        
-        if (rows.length === 0) {
-            console.error('No se encontraron filas existentes');
-            return;
-        }
-        
 
-        // Usar el template vacío de Django para una fila nueva
+        // Usar el template vacío de Django para una fila nueva (siempre que exista)
         let emptyFormTemplate = document.getElementById('empty-form-template');
         if (emptyFormTemplate) {
             let html = emptyFormTemplate.innerHTML.replace(/__prefix__/g, formCount);
@@ -136,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof setInputsToUpperCase === 'function') setInputsToUpperCase('form');
                 window.jQuery(document).trigger('formset:added', [$row, 'items']);
             }
-        } else {
+        } else if (rows.length > 0) {
             // Fallback: clonar la primera fila existente
             const firstRow = rows[0];
             const clonedRow = firstRow.cloneNode(true);
@@ -184,6 +178,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof setInputsToUpperCase === 'function') setInputsToUpperCase('form');
                 window.jQuery(document).trigger('formset:added', [$row, 'items']);
             }
+        } else {
+            // No hay template ni filas para clonar
+            alert('No se puede agregar una nueva fila: no hay template ni filas existentes.');
+            return;
         }
 
         // Actualizar el contador de forms
