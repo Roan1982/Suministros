@@ -812,7 +812,7 @@ def agregar_bien(request):
             return redirect('dashboard')
     else:
         form = BienForm()
-    return render(request, 'inventario/form.html', {'form': form, 'titulo': 'Agregar Bien'})
+    return render(request, 'inventario/agregar_bien.html', {'form': form, 'titulo': 'Agregar Bien'})
 
 
 

@@ -38,6 +38,20 @@ function enlazarEventosFila(row) {
 }
 
 // Script para que cada fila permita seleccionar OC y bien, y autocompletar precio
+if (window.jQuery && window.jQuery.fn.select2) {
+    window.jQuery(function() {
+        var $rubro = window.jQuery('select[name="rubro"]');
+        if ($rubro.length) {
+            $rubro.select2({
+                width: '100%',
+                theme: 'bootstrap-5',
+                placeholder: 'Seleccione un rubro',
+                allowClear: true,
+                language: 'es'
+            });
+        }
+    });
+}
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM cargado, buscando elementos...');
     
