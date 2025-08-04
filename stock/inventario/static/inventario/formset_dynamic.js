@@ -1,5 +1,41 @@
 
+
 console.log('Cargando formset_dynamic.js');
+
+// Enlaza eventos para actualizar el precio unitario dinámicamente
+function enlazarEventosFila(row) {
+    const bienSelect = row.querySelector("select[name$='-bien']");
+    const ordenSelect = row.querySelector("select[name$='-orden_de_compra']");
+    const precioSpan = row.querySelector('.precio-unitario-cell');
+    const precioInput = row.querySelector("input[name$='-precio_unitario']");
+
+    function actualizarPrecio() {
+        const bienId = bienSelect && bienSelect.value;
+        const ordenId = ordenSelect && ordenSelect.value;
+        if (bienId && ordenId) {
+            fetch(`/inventario/api/orden_precio/${ordenId}/${bienId}/`)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.precio) {
+                        if (precioSpan) precioSpan.textContent = data.precio;
+                        if (precioInput) precioInput.value = data.precio;
+                    } else {
+                        if (precioSpan) precioSpan.textContent = '-';
+                        if (precioInput) precioInput.value = '';
+                    }
+                })
+                .catch(() => {
+                    if (precioSpan) precioSpan.textContent = '-';
+                    if (precioInput) precioInput.value = '';
+                });
+        } else {
+            if (precioSpan) precioSpan.textContent = '-';
+            if (precioInput) precioInput.value = '';
+        }
+    }
+    if (bienSelect) bienSelect.addEventListener('change', actualizarPrecio);
+    if (ordenSelect) ordenSelect.addEventListener('change', actualizarPrecio);
+}
 
 // Script para que cada fila permita seleccionar OC y bien, y autocompletar precio
 document.addEventListener('DOMContentLoaded', function() {
@@ -34,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Inputs TOTAL_FORMS encontrados:', allInputs);
             if (allInputs.length > 0) {
                 totalForms = allInputs[0];
-                console.log('Usando input alternativo:', totalForms);
             }
         }
         
@@ -48,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const formCount = parseInt(totalForms.value);
+        var formCount = parseInt(totalForms.value);
         console.log('Form count actual:', formCount);
         
         // Buscar la primera fila de item
@@ -60,50 +95,96 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const firstRow = rows[0];
-        const newRow = firstRow.cloneNode(true);
-        console.log('Fila clonada exitosamente');
 
-        // Actualizar todos los atributos name/id y limpiar valores
-        newRow.querySelectorAll('input, select, textarea').forEach(function(input) {
-            // Actualizar name e id para todos los elementos
-            if (input.name) {
-                const oldName = input.name;
-                input.name = input.name.replace(/items-(\d+)-/, `items-${formCount}-`);
-                console.log(`Actualizando name: ${oldName} -> ${input.name}`);
+        // Usar el template vacío de Django para una fila nueva
+        let emptyFormTemplate = document.getElementById('empty-form-template');
+        if (emptyFormTemplate) {
+            let html = emptyFormTemplate.innerHTML.replace(/__prefix__/g, formCount);
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html;
+            const newRow = temp.querySelector('tr');
+            // Limpiar valores de los campos
+            newRow.querySelectorAll('input, select, textarea').forEach(function(input) {
+                if (input.type === 'text' || input.type === 'number' || input.type === 'hidden') input.value = '';
+                if (input.tagName === 'SELECT') input.selectedIndex = 0;
+            });
+            // Insertar antes del botón Agregar bien si existe
+            const addBtnRow = addBtn.closest('tr');
+            if (addBtnRow) {
+                formsetTable.insertBefore(newRow, addBtnRow);
+            } else {
+                formsetTable.appendChild(newRow);
             }
-            if (input.id) {
-                const oldId = input.id;
-                input.id = input.id.replace(/items-(\d+)-/, `items-${formCount}-`);
-                console.log(`Actualizando id: ${oldId} -> ${input.id}`);
+            enlazarEventosFila(newRow);
+            if (window.jQuery) {
+                var $row = window.jQuery(newRow);
+                // Solo inicializar select2 en los nuevos selects
+                $row.find("select[name$='-bien']").select2({
+                    width: '100%',
+                    theme: 'bootstrap-5',
+                    placeholder: 'Seleccione un bien',
+                    allowClear: true,
+                    language: 'es'
+                });
+                $row.find("select[name$='-orden_de_compra']").select2({
+                    width: '100%',
+                    theme: 'bootstrap-5',
+                    placeholder: 'Seleccione una orden',
+                    allowClear: true,
+                    language: 'es'
+                });
+                if (typeof setInputsToUpperCase === 'function') setInputsToUpperCase('form');
+                window.jQuery(document).trigger('formset:added', [$row, 'items']);
             }
-            
-            // Limpiar valores según el tipo de input
-            if (input.type === 'text' || input.type === 'number' || input.type === 'hidden') {
-                input.value = '';
+        } else {
+            // Fallback: clonar la primera fila existente
+            const firstRow = rows[0];
+            const clonedRow = firstRow.cloneNode(true);
+            // Limpiar valores y destruir select2 como antes
+            clonedRow.querySelectorAll('input, select, textarea').forEach(function(input) {
+                if (input.name) input.name = input.name.replace(/items-(\d+)-/, `items-${formCount}-`);
+                if (input.id) input.id = input.id.replace(/items-(\d+)-/, `items-${formCount}-`);
+                if (input.type === 'text' || input.type === 'number' || input.type === 'hidden') input.value = '';
+                if (input.tagName === 'SELECT') {
+                    if (window.jQuery && window.jQuery(input).hasClass('select2-hidden-accessible')) {
+                        window.jQuery(input).select2('destroy');
+                    }
+                    input.selectedIndex = 0;
+                }
+            });
+            clonedRow.querySelectorAll('label').forEach(function(label) {
+                if (label.getAttribute('for')) label.setAttribute('for', label.getAttribute('for').replace(/items-(\d+)-/, `items-${formCount}-`));
+            });
+            const cell = clonedRow.querySelector('.precio-unitario-cell');
+            if (cell) cell.textContent = '-';
+            // Insertar antes del botón Agregar bien si existe
+            const addBtnRow = addBtn.closest('tr');
+            if (addBtnRow) {
+                formsetTable.insertBefore(clonedRow, addBtnRow);
+            } else {
+                formsetTable.appendChild(clonedRow);
             }
-            if (input.tagName === 'SELECT') {
-                input.selectedIndex = 0;
+            enlazarEventosFila(clonedRow);
+            if (window.jQuery) {
+                var $row = window.jQuery(clonedRow);
+                $row.find("select[name$='-bien']").select2({
+                    width: '100%',
+                    theme: 'bootstrap-5',
+                    placeholder: 'Seleccione un bien',
+                    allowClear: true,
+                    language: 'es'
+                });
+                $row.find("select[name$='-orden_de_compra']").select2({
+                    width: '100%',
+                    theme: 'bootstrap-5',
+                    placeholder: 'Seleccione una orden',
+                    allowClear: true,
+                    language: 'es'
+                });
+                if (typeof setInputsToUpperCase === 'function') setInputsToUpperCase('form');
+                window.jQuery(document).trigger('formset:added', [$row, 'items']);
             }
-        });
-
-        // También actualizar los labels for attributes si existen
-        newRow.querySelectorAll('label').forEach(function(label) {
-            if (label.getAttribute('for')) {
-                const oldFor = label.getAttribute('for');
-                const newFor = oldFor.replace(/items-(\d+)-/, `items-${formCount}-`);
-                label.setAttribute('for', newFor);
-                console.log(`Actualizando label for: ${oldFor} -> ${newFor}`);
-            }
-        });
-
-        // Limpiar celda de precio
-        const cell = newRow.querySelector('.precio-unitario-cell');
-        if (cell) cell.textContent = '-';
-
-        // Insertar antes de la fila del botón
-        const buttonRow = addBtn.closest('tr');
-        formsetTable.insertBefore(newRow, buttonRow);
+        }
 
         // Actualizar el contador de forms
         totalForms.value = formCount + 1;
@@ -118,14 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Input ${index}: name="${input.name}", value="${input.value}"`);
             }
         });
-
-        // Enlazar eventos a la nueva fila
-        enlazarEventosFila(newRow);
-        // Disparar evento para select2
-        if (window.jQuery) {
-            var $row = window.jQuery(newRow);
-            window.jQuery(document).trigger('formset:added', [$row, 'items']);
-        }
     });
 
     // Enlazar eventos a todas las filas existentes
@@ -133,40 +206,3 @@ document.addEventListener('DOMContentLoaded', function() {
         enlazarEventosFila(row);
     });
 });
-
-function enlazarEventosFila(row) {
-    const ordenSelect = row.querySelector('select[name$="-orden_de_compra"]');
-    const bienSelect = row.querySelector('select[name$="-bien"]');
-    
-    console.log('Enlazando eventos para fila:', row);
-    console.log('Orden select encontrado:', ordenSelect);
-    console.log('Bien select encontrado:', bienSelect);
-    
-    // Eliminado: No modificar el select de bien al cambiar la orden de compra
-    
-    if (bienSelect) {
-        bienSelect.addEventListener('change', function() {
-            const ordenId = ordenSelect ? ordenSelect.value : '';
-            const bienId = bienSelect.value;
-            console.log('Bien cambiado:', bienId, 'para orden:', ordenId);
-            if (!ordenId || !bienId) return;
-            
-            fetch(`/api/orden_precio/${ordenId}/${bienId}/`)
-                .then(resp => resp.json())
-                .then(data => {
-                    console.log('Precio recibido:', data.precio);
-                    const precioInput = row.querySelector('input[name$="-precio_unitario"]');
-                    if (precioInput) {
-                        precioInput.value = data.precio;
-                        console.log('Precio actualizado en input hidden:', precioInput.value);
-                    }
-                    const precioCell = row.querySelector('.precio-unitario-cell');
-                    if (precioCell) {
-                        precioCell.textContent = data.precio || '-';
-                        console.log('Precio mostrado en celda:', precioCell.textContent);
-                    }
-                })
-                .catch(error => console.error('Error cargando precio:', error));
-        });
-    }
-}

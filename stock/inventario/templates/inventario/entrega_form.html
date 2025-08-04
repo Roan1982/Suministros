@@ -59,6 +59,22 @@
                     </td>
                   </tr>
                   {% endfor %}
+                {% comment %} Template para nuevas filas dinámicas {% endcomment %}
+                </tbody>
+                <script type="text/template" id="empty-form-template">
+                  <tr class="form-row">
+                    {# Orden correcto: bien, orden_de_compra, cantidad, precio_unitario #}
+                    <td>{{ formset.empty_form.bien|add_class:'bien-select form-control' }}</td>
+                    <td>{{ formset.empty_form.orden_de_compra|add_class:'orden-select form-control' }}</td>
+                    <td>{{ formset.empty_form.cantidad }}</td>
+                    <td><span class="precio-unitario-cell">-</span>{{ formset.empty_form.precio_unitario.as_hidden }}</td>
+                    <td>
+                      <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </script>
                 </tbody>
               </table>
             </div>
