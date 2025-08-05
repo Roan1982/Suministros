@@ -27,7 +27,23 @@ def bienes_list(request):
         bienes = bienes.filter(rubro_id=rubro_id)
     bienes = bienes.order_by('nombre')
     rubros = Rubro.objects.all().order_by('nombre')
-    return render(request, 'inventario/bienes_list.html', {'bienes': bienes, 'q': q, 'rubros': rubros, 'rubro_id': rubro_id})
+    # Paginación
+    from django.core.paginator import Paginator, EmptyPage
+    paginator = Paginator(bienes, 30)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    return render(request, 'inventario/bienes_list.html', {'page_obj': page_obj, 'q': q, 'rubros': rubros, 'rubro_id': rubro_id})
  
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
