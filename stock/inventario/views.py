@@ -1,3 +1,16 @@
+from .models import Rubro, Bien
+# Vista para listar rubros
+from django.contrib.auth.decorators import login_required
+@login_required
+def rubros_list(request):
+    rubros = Rubro.objects.all().order_by('nombre')
+    return render(request, 'inventario/rubros_list.html', {'rubros': rubros})
+
+# Vista para listar bienes
+@login_required
+def bienes_list(request):
+    bienes = Bien.objects.select_related('rubro').all().order_by('nombre')
+    return render(request, 'inventario/bienes_list.html', {'bienes': bienes})
  
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse

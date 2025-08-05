@@ -1,0 +1,30 @@
+{% extends 'inventario/base.html' %}
+{% block title %}Bienes{% endblock %}
+{% block content %}
+<div class="card mx-auto mt-5" style="max-width: 800px;">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="mb-0"><i class="fa-solid fa-box"></i> Bienes</h3>
+      <a href="{% url 'agregar_bien' %}" class="btn btn-success"><i class="fa-solid fa-plus"></i> Agregar Bien</a>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Rubro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bien in bienes %}
+        <tr>
+          <td>{{ bien.nombre }}</td>
+          <td>{{ bien.rubro.nombre }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-center">No hay bienes registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
