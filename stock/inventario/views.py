@@ -1,6 +1,13 @@
-
+ 
 from django.contrib.auth.decorators import login_required
-from .models import Entrega
+from django.http import JsonResponse
+
+# API stub: ordenes con stock para un bien
+@login_required
+def api_ordenes_con_stock_bien(request, bien_id):
+    # TODO: Implementar lógica real
+    return JsonResponse({'status': 'ok', 'bien_id': bien_id, 'ordenes': []})
+from .models import Entrega, OrdenDeCompraItem
 # Vista para listar remitos con paginador
 from django.urls import reverse
 from django.contrib import messages
@@ -25,126 +32,107 @@ def remitos_list(request):
         page_obj = paginator.page(page_number_int)
     except EmptyPage:
         page_obj = paginator.page(1)
-    return render(request, 'inventario/remitos_list.html', {
-        'page_obj': page_obj
-    })
-
-# Vista para reporte personalizado
-from .forms import ReportePersonalizadoForm
-from django.db.models import Q
-from django.contrib.auth.decorators import login_required
-
 @login_required
-def reporte_personalizado(request):
-    form = ReportePersonalizadoForm(request.GET or None)
-    resultados = []
-    tipo = form.cleaned_data.get('tipo') if form.is_valid() else 'entregados'
-    if form.is_valid() and any(form.cleaned_data.values()):
-        filtros = Q()
-        cd = form.cleaned_data
-        if tipo == 'entregados':
-            from .models import EntregaItem
-            if cd['bien']:
-                filtros &= Q(bien=cd['bien'])
-            if cd['rubro']:
-                filtros &= Q(bien__rubro=cd['rubro'])
-            if cd['orden_de_compra']:
-                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
-            if cd['proveedor']:
-                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
-            if cd['fecha_inicio']:
-                filtros &= Q(entrega__fecha__gte=cd['fecha_inicio'])
-            if cd['fecha_fin']:
-                filtros &= Q(entrega__fecha__lte=cd['fecha_fin'])
-            if cd['area_persona']:
-                filtros &= Q(entrega__area_persona__icontains=cd['area_persona'])
-            if cd['precio_unitario_min'] is not None:
-                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
-            if cd['precio_unitario_max'] is not None:
-                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
-            qs = EntregaItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'entrega', 'bien__rubro')
-            from django.utils.timezone import is_aware
-            for item in qs:
-                fecha = item.entrega.fecha if item.entrega else ''
-                fecha_str = ''
-                hora_str = ''
-                if fecha and hasattr(fecha, 'isoformat'):
-                    if is_aware(fecha):
-                        fecha = fecha.astimezone(None).replace(tzinfo=None)
-                    fecha_str = fecha.strftime('%Y-%m-%d')
-                    hora_str = fecha.strftime('%H:%M:%S')
-                resultados.append({
-                    'bien': item.bien.nombre,
-                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
-                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
-                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
-                    'fecha': fecha_str,
-                    'hora': hora_str,
-                    'area_persona': item.entrega.area_persona if item.entrega else '',
-                    'precio_unitario': item.precio_unitario,
-                    'cantidad': item.cantidad,
-                    'precio_total': item.precio_total,
-                })
-        elif tipo == 'comprados':
-            from .models import OrdenDeCompraItem
-            if cd['bien']:
-                filtros &= Q(bien=cd['bien'])
-            if cd['rubro']:
-                filtros &= Q(bien__rubro=cd['rubro'])
-            if cd['orden_de_compra']:
-                filtros &= Q(orden_de_compra=cd['orden_de_compra'])
-            if cd['proveedor']:
-                filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
-            if cd['precio_unitario_min'] is not None:
-                filtros &= Q(precio_unitario__gte=cd['precio_unitario_min'])
-            if cd['precio_unitario_max'] is not None:
-                filtros &= Q(precio_unitario__lte=cd['precio_unitario_max'])
-            qs = OrdenDeCompraItem.objects.filter(filtros).select_related('bien', 'orden_de_compra', 'bien__rubro')
-            for item in qs:
-                resultados.append({
-                    'bien': item.bien.nombre,
-                    'rubro': item.bien.rubro.nombre if item.bien.rubro else '',
-                    'orden': item.orden_de_compra.numero if item.orden_de_compra else '',
-                    'proveedor': item.orden_de_compra.proveedor if item.orden_de_compra else '',
-                    'fecha': '',
-                    'hora': '',
-                    'area_persona': '',
-                    'precio_unitario': item.precio_unitario,
-                    'cantidad': item.cantidad,
-                    'precio_total': item.precio_total,
-                })
-    return render(request, 'inventario/reporte_personalizado.html', {'form': form, 'resultados': resultados})
-from django.db.models import F, Sum
-# API para AJAX: órdenes de compra con stock disponible para un bien
-from django.http import JsonResponse
+def reporte_stock_bien(request):
+    from .models import Bien, EntregaItem, Rubro
+    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
 
-def api_ordenes_con_stock_bien(request, bien_id):
-    # Decorador eliminado para permitir acceso público
-    # Buscar órdenes de compra con stock disponible para el bien
-    # Stock disponible = cantidad comprada - cantidad entregada (por bien y orden)
-    from .models import OrdenDeCompraItem, EntregaItem, Bien
+    bienes = Bien.objects.select_related('rubro').all().order_by('rubro__nombre', 'nombre')
+    data = []
+    excel_rows = []
+    for bien in bienes:
+        comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+        entregado = EntregaItem.objects.filter(bien=bien).aggregate(
+            total=Sum('cantidad'),
+            total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
+        )
+        stock = comprado - (entregado['total'] or 0)
+        row = {
+            'Rubro': bien.rubro.nombre if bien.rubro else '',
+            'Bien': bien.nombre,
+            'Stock': stock,
+            'Total_Entregado': entregado['total'] or 0,
+            'Valor_Entregado': float(entregado['total_pesos'] or 0),
+        }
+        data.append(row)
+        excel_rows.append({
+            'Rubro': bien.rubro.nombre if bien.rubro else '',
+            'Bien': bien.nombre,
+            'Stock': stock,
+            'Total Entregado': entregado['total'] or 0,
+            'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
+        })
+
+    # Paginación unificada
+    paginator = Paginator(data, 20)
+    page_number = request.GET.get('page')
     try:
-        bien = Bien.objects.get(pk=bien_id)
-    except Bien.DoesNotExist:
-        return JsonResponse({'ordenes': []})
-    items = (
-        OrdenDeCompraItem.objects.filter(bien_id=bien_id)
-    )
-    ordenes = []
-    for item in items:
-        entregado = EntregaItem.objects.filter(
-            bien_id=bien_id,
-            orden_de_compra=item.orden_de_compra
-        ).aggregate(total=Sum('cantidad'))['total'] or 0
-        disponible = item.cantidad - entregado
-        if disponible > 0:
-            ordenes.append({
-                'id': item.orden_de_compra.id,
-                'numero': str(item.orden_de_compra),
-                'disponible': disponible
-            })
-    return JsonResponse({'ordenes': ordenes})
-from django.shortcuts import render, redirect, get_object_or_404
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    # Paginación unificada
+    paginator = Paginator(data, 20)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    if request.GET.get('export') == 'excel':
+        import pandas as pd
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Estado de Stock por Bien', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Rubro", "Bien", "Stock", "Total Entregado", "Valor Entregado ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Rubro'], row['Bien'], row['Stock'], row['Total Entregado'], f"{row['Valor Entregado ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_stock_bien.html', {'page_obj': page_obj})
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import login_required
 
@@ -281,7 +269,11 @@ def reportes(request):
             doc.build(elements)
             return response
 
+
     return render(request, 'inventario/reportes.html', {'form': form, 'resultados': resultados})
+
+# Alias para compatibilidad con urls.py
+reporte_personalizado = reportes
 
 # Stubs de reportes (para evitar errores de import hasta implementar cada uno)
 @login_required
@@ -404,6 +396,22 @@ def reporte_stock_bien(request):
             'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
         })
 
+    # Paginación unificada (debe estar antes de los bloques de exportación)
+    paginator = Paginator(data, 20)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
     if request.GET.get('export') == 'excel':
         df = pd.DataFrame(excel_rows)
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -436,7 +444,7 @@ def reporte_stock_bien(request):
         doc.build(elements)
         return response
 
-    return render(request, 'inventario/reporte_stock_bien.html', {'data': data})
+    return render(request, 'inventario/reporte_stock_bien.html', {'page_obj': page_obj})
 
 @login_required
 def reporte_entregas_anio(request):
