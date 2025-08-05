@@ -18,127 +18,15 @@ from django.core.paginator import Paginator, EmptyPage
 @login_required
 def remitos_list(request):
     remitos = Entrega.objects.all().order_by('-fecha')
-    paginator = Paginator(remitos, 20)  # 20 remitos por página
-    page_number = request.GET.get('page')
-    try:
-        page_number_int = int(page_number) if page_number else 1
-    except (TypeError, ValueError):
-        page_number_int = 1
-    if page_number_int < 1:
-        page_number_int = 1
-    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
-        page_number_int = paginator.num_pages
-    try:
-        page_obj = paginator.page(page_number_int)
-    except EmptyPage:
-        page_obj = paginator.page(1)
-@login_required
-def reporte_stock_bien(request):
-    from .models import Bien, EntregaItem, Rubro
-    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
-    from django.http import HttpResponse
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
 
-    bienes = Bien.objects.select_related('rubro').all().order_by('rubro__nombre', 'nombre')
-    data = []
-    excel_rows = []
-    for bien in bienes:
-        comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
-        entregado = EntregaItem.objects.filter(bien=bien).aggregate(
-            total=Sum('cantidad'),
-            total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
-        )
-        stock = comprado - (entregado['total'] or 0)
-        row = {
-            'Rubro': bien.rubro.nombre if bien.rubro else '',
-            'Bien': bien.nombre,
-            'Stock': stock,
-            'Total_Entregado': entregado['total'] or 0,
-            'Valor_Entregado': float(entregado['total_pesos'] or 0),
-        }
-        data.append(row)
-        excel_rows.append({
-            'Rubro': bien.rubro.nombre if bien.rubro else '',
-            'Bien': bien.nombre,
-            'Stock': stock,
-            'Total Entregado': entregado['total'] or 0,
-            'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
-        })
-
-    # Paginación unificada
-    paginator = Paginator(data, 20)
-    page_number = request.GET.get('page')
-    try:
-        page_number_int = int(page_number) if page_number else 1
-    except (TypeError, ValueError):
-        page_number_int = 1
-    if page_number_int < 1:
-        page_number_int = 1
-    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
-        page_number_int = paginator.num_pages
-    try:
-        page_obj = paginator.page(page_number_int)
-    except EmptyPage:
-        page_obj = paginator.page(1)
-
-    # Paginación unificada
-    paginator = Paginator(data, 20)
-    page_number = request.GET.get('page')
-    try:
-        page_number_int = int(page_number) if page_number else 1
-    except (TypeError, ValueError):
-        page_number_int = 1
-    if page_number_int < 1:
-        page_number_int = 1
-    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
-        page_number_int = paginator.num_pages
-    try:
-        page_obj = paginator.page(page_number_int)
-    except EmptyPage:
-        page_obj = paginator.page(1)
-    if request.GET.get('export') == 'excel':
-        import pandas as pd
-        df = pd.DataFrame(excel_rows)
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.xlsx'
-        df.to_excel(response, index=False)
-        return response
-
-    if request.GET.get('export') == 'pdf':
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename=stock_por_bien.pdf'
-        doc = SimpleDocTemplate(response, pagesize=letter)
-        elements = []
-        styles = getSampleStyleSheet()
-        elements.append(Paragraph('Estado de Stock por Bien', styles['Title']))
-        elements.append(Spacer(1, 12))
-        table_data = [["Rubro", "Bien", "Stock", "Total Entregado", "Valor Entregado ($)"]]
-        for row in excel_rows:
-            table_data.append([row['Rubro'], row['Bien'], row['Stock'], row['Total Entregado'], f"{row['Valor Entregado ($)']:.2f}"])
-        t = Table(table_data, repeatRows=1)
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
-            ('GRID', (0,0), (-1,-1), 1, colors.black),
-        ]))
-        elements.append(t)
-        doc.build(elements)
-        return response
-
-    return render(request, 'inventario/reporte_stock_bien.html', {'page_obj': page_obj})
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.decorators import login_required
-
-# Página centralizada de reportes
+# Vista dashboard de reportes (cards)
 @login_required
 def reportes(request):
+    return render(request, 'inventario/reportes.html')
+
+# Vista de reporte personalizado con filtros y resultados
+@login_required
+def reporte_personalizado(request):
     from .forms import ReportePersonalizadoForm
     from .models import EntregaItem
     from django.db.models import Q
@@ -269,11 +157,48 @@ def reportes(request):
             doc.build(elements)
             return response
 
+    # Paginación backend para resultados si hay datos
+    page_obj = None
+    if resultados:
+        from django.core.paginator import Paginator, EmptyPage
+        paginator = Paginator(resultados, 20)
+        page_number = request.GET.get('page')
+        try:
+            page_number_int = int(page_number) if page_number else 1
+        except (TypeError, ValueError):
+            page_number_int = 1
+        if page_number_int < 1:
+            page_number_int = 1
+        if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+            page_number_int = paginator.num_pages
+        try:
+            page_obj = paginator.page(page_number_int)
+        except EmptyPage:
+            page_obj = paginator.page(1)
+    return render(request, 'inventario/reporte_personalizado.html', {'form': form, 'page_obj': page_obj, 'request': request})
 
-    return render(request, 'inventario/reportes.html', {'form': form, 'resultados': resultados})
+
+    # Paginación backend para resultados si hay datos
+    page_obj = None
+    if resultados:
+        from django.core.paginator import Paginator, EmptyPage
+        paginator = Paginator(resultados, 20)
+        page_number = request.GET.get('page')
+        try:
+            page_number_int = int(page_number) if page_number else 1
+        except (TypeError, ValueError):
+            page_number_int = 1
+        if page_number_int < 1:
+            page_number_int = 1
+        if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+            page_number_int = paginator.num_pages
+        try:
+            page_obj = paginator.page(page_number_int)
+        except EmptyPage:
+            page_obj = paginator.page(1)
+    return render(request, 'inventario/reporte_personalizado.html', {'form': form, 'page_obj': page_obj, 'request': request})
 
 # Alias para compatibilidad con urls.py
-reporte_personalizado = reportes
 
 # Stubs de reportes (para evitar errores de import hasta implementar cada uno)
 @login_required
