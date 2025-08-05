@@ -918,6 +918,7 @@ def dashboard(request):
         if stock_actual <= 10:
             bajos_stock.append({'bien': bien, 'stock': stock_actual})
 
+    bajos_stock = sorted(bajos_stock, key=lambda x: x['stock'])
     return render(request, 'inventario/dashboard.html', {
         'ordenes_vencer': ordenes_vencer,
         'bajos_stock': bajos_stock
