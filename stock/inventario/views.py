@@ -105,12 +105,20 @@ def reporte_personalizado(request):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
 
+    # Obtener valores únicos para proveedor y area_persona
+    from .models import Entrega, OrdenDeCompra
+    proveedores = list(OrdenDeCompra.objects.order_by().values_list('proveedor', flat=True).distinct())
+    areas_persona = list(Entrega.objects.order_by().values_list('area_persona', flat=True).distinct())
+
     form = ReportePersonalizadoForm(request.GET or None)
     resultados = []
     tipo = form.cleaned_data.get('tipo') if form.is_valid() else 'entregados'
     if form.is_valid() and any(form.cleaned_data.values()):
         filtros = Q()
         cd = form.cleaned_data
+        from datetime import datetime, time
+        from django.utils.timezone import make_aware, is_naive, get_current_timezone
+        tz = get_current_timezone()
         if tipo == 'entregados':
             if cd['bien']:
                 filtros &= Q(bien=cd['bien'])
@@ -120,10 +128,17 @@ def reporte_personalizado(request):
                 filtros &= Q(orden_de_compra=cd['orden_de_compra'])
             if cd['proveedor']:
                 filtros &= Q(orden_de_compra__proveedor__icontains=cd['proveedor'])
+            # Manejo correcto de fechas con zona horaria
             if cd['fecha_inicio']:
-                filtros &= Q(entrega__fecha__gte=cd['fecha_inicio'])
+                dt_inicio = datetime.combine(cd['fecha_inicio'], time.min)
+                if is_naive(dt_inicio):
+                    dt_inicio = make_aware(dt_inicio, timezone=tz)
+                filtros &= Q(entrega__fecha__gte=dt_inicio)
             if cd['fecha_fin']:
-                filtros &= Q(entrega__fecha__lte=cd['fecha_fin'])
+                dt_fin = datetime.combine(cd['fecha_fin'], time.max)
+                if is_naive(dt_fin):
+                    dt_fin = make_aware(dt_fin, timezone=tz)
+                filtros &= Q(entrega__fecha__lte=dt_fin)
             if cd['area_persona']:
                 filtros &= Q(entrega__area_persona__icontains=cd['area_persona'])
             if cd['precio_unitario_min'] is not None:
@@ -243,7 +258,13 @@ def reporte_personalizado(request):
             page_obj = paginator.page(page_number_int)
         except EmptyPage:
             page_obj = paginator.page(1)
-    return render(request, 'inventario/reporte_personalizado.html', {'form': form, 'page_obj': page_obj, 'request': request})
+    return render(request, 'inventario/reporte_personalizado.html', {
+        'form': form,
+        'page_obj': page_obj,
+        'request': request,
+        'proveedores': proveedores,
+        'areas_persona': areas_persona,
+    })
 
 
     # Paginación backend para resultados si hay datos
