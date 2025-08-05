@@ -1,3 +1,34 @@
+
+from django.contrib.auth.decorators import login_required
+from .models import Entrega
+# Vista para listar remitos con paginador
+from django.urls import reverse
+from django.contrib import messages
+
+# Importar Paginator y EmptyPage para paginación robusta
+from django.core.paginator import Paginator, EmptyPage
+
+@login_required
+def remitos_list(request):
+    remitos = Entrega.objects.all().order_by('-fecha')
+    paginator = Paginator(remitos, 20)  # 20 remitos por página
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    return render(request, 'inventario/remitos_list.html', {
+        'page_obj': page_obj
+    })
+
 # Vista para reporte personalizado
 from .forms import ReportePersonalizadoForm
 from django.db.models import Q
@@ -737,11 +768,24 @@ from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.urls import reverse
 
-# Listado de órdenes de compra
 @login_required
 def ordenes_list(request):
-    ordenes = OrdenDeCompra.objects.all().order_by('-fecha_inicio')
-    return render(request, 'inventario/orden_list.html', {'ordenes': ordenes})
+    ordenes_qs = OrdenDeCompra.objects.all().order_by('-fecha_inicio')
+    paginator = Paginator(ordenes_qs, 20)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    return render(request, 'inventario/orden_list.html', {'page_obj': page_obj})
 
 # Detalle de una orden de compra
 @login_required
