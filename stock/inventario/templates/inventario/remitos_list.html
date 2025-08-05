@@ -29,7 +29,7 @@
                     <td>{{ remito.area_persona }}</td>
                     <td>{{ remito.observaciones|default:'-' }}</td>
                     <td class="text-center">
-                        <a href="{% url 'remito_print' remito.id %}" class="btn btn-outline-primary btn-sm me-1">Ver/Imprimir</a>
+                        <a href="{% url 'remito_print' remito.id %}" class="btn btn-outline-primary btn-sm me-1" target="_blank">Ver/Imprimir</a>
                         <a href="{% url 'remito_pdf' remito.id %}" class="btn btn-outline-secondary btn-sm">PDF</a>
                     </td>
                 </tr>

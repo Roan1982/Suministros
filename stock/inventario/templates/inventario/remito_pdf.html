@@ -4,65 +4,112 @@
     <meta charset="UTF-8">
     <title>Remito de Entrega</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .remito-header { margin-bottom: 20px; }
-        .remito-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .remito-table th, .remito-table td { border: 1px solid #333; padding: 6px; text-align: left; }
-        .remito-footer { margin-top: 30px; }
-        .firma { margin-top: 40px; }
+        #btn-imprimir {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            z-index: 1000;
+            display: block;
+            print-color-adjust: exact;
+        }
         @media print {
-            .no-print { display: none; }
+            #btn-imprimir { display: none !important; }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px 40px 100px 40px;
+        }
+        .titulo-sistema {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 18px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        .remito-header {
+            margin-bottom: 18px;
+        }
+        .remito-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+        }
+        .remito-table th {
+            background: #e0e7ef;
+            color: #222;
+            font-weight: bold;
+            border: 1px solid #333;
+            padding: 7px 4px;
+            text-align: center;
+        }
+        .remito-table td {
+            border: 1px solid #333;
+            padding: 7px 4px;
+            text-align: center;
+        }
+        .remito-footer {
+            margin-top: 30px;
+            font-weight: bold;
+        }
+        .firma-final {
+            position: fixed;
+            right: 60px;
+            bottom: 60px;
+            width: 250px;
+            text-align: right;
+            font-size: 1em;
+        }
+        .firma-final p {
+            margin: 0;
+        }
+        @page {
+            size: A4;
+            margin: 40px 40px 100px 40px;
         }
     </style>
 </head>
 <body>
-{% extends 'inventario/base.html' %}
-{% block content %}
-<div class="remito-header">
-    <h2>Remito de Entrega N° {{ entrega.id }}</h2>
-    <p><strong>Fecha:</strong> {{ entrega.fecha|date:"d/m/Y H:i" }}</p>
-    <p><strong>Área/Persona:</strong> {{ entrega.area_persona }}</p>
-    {# Eliminado: Orden de Compra general #}
-    <p><strong>Observaciones:</strong> {{ entrega.observaciones }}</p>
-</div>
-<table class="remito-table">
-    <thead>
-        <tr>
-            <th>Orden de Compra</th>
-            <th>Producto</th>
-            <th>Cantidad</th>
-            <th>Precio Unitario</th>
-            <th>Precio Total</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in entrega.items.all %}
-        <tr>
-            <td>{% if item.orden_de_compra %}{{ item.orden_de_compra }}{% else %}-{% endif %}</td>
-            <td>{{ item.bien }}</td>
-            <td>{{ item.cantidad }}</td>
-            <td>${{ item.precio_unitario }}</td>
-            <td>${{ item.precio_total }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<div class="remito-footer">
-    <strong>Total Remito: ${{ entrega.total_entrega }}</strong>
-</div>
-<div class="firma">
-    <p>.......................................................</p>
-    <p>Firma y aclaración</p>
-</div>
-{% if imprimir %}
-<script>window.print();</script>
-{% else %}
-<p class="no-print">
-    <a href="javascript:window.print()" class="btn btn-primary">Imprimir</a>
-    <a href="{% url 'remito_pdf' entrega.id %}" class="btn btn-secondary">Descargar PDF</a>
-    <a href="/" class="btn btn-link">Volver</a>
-</p>
-{% endif %}
-{% endblock %}
+    <button onclick="window.print()" id="btn-imprimir">🖨️ Imprimir</button>
+    <div class="titulo-sistema">Stock de Almacenes</div>
+    <div class="remito-header">
+        <h2 style="text-align:center; font-size:1.3em; margin-bottom:10px;">Remito de Entrega N° {{ entrega.id }}</h2>
+        <table style="width:100%; margin-bottom:10px;">
+            <tr>
+                <td><strong>Fecha:</strong> {{ entrega.fecha|date:"d/m/Y H:i" }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Observaciones:</strong> {{ entrega.observaciones }}</td>
+            </tr>
+        </table>
+    </div>
+    <table class="remito-table">
+        <thead>
+            <tr>
+                <th>Orden de Compra</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Precio Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in entrega.items.all %}
+            <tr>
+                <td>{% if item.orden_de_compra %}{{ item.orden_de_compra }}{% else %}-{% endif %}</td>
+                <td>{{ item.bien }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>${{ item.precio_unitario }}</td>
+                <td>${{ item.precio_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="remito-footer">
+        <span>Total Remito: ${{ entrega.total_entrega }}</span>
+    </div>
+    <div class="firma-final">
+        <p>.......................................................</p>
+        <p>Firma y aclaración</p>
+    </div>
 </body>
 </html>
