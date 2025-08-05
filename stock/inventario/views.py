@@ -1,16 +1,33 @@
 from .models import Rubro, Bien
 # Vista para listar rubros
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 @login_required
 def rubros_list(request):
-    rubros = Rubro.objects.all().order_by('nombre')
-    return render(request, 'inventario/rubros_list.html', {'rubros': rubros})
+    q = request.GET.get('q', '').strip()
+    rubros = Rubro.objects.all()
+    if q:
+        rubros = rubros.filter(nombre__icontains=q)
+    rubros = rubros.order_by('nombre')
+    return render(request, 'inventario/rubros_list.html', {'rubros': rubros, 'q': q})
 
 # Vista para listar bienes
 @login_required
 def bienes_list(request):
-    bienes = Bien.objects.select_related('rubro').all().order_by('nombre')
-    return render(request, 'inventario/bienes_list.html', {'bienes': bienes})
+    q = request.GET.get('q', '').strip()
+    rubro_id = request.GET.get('rubro')
+    bienes = Bien.objects.select_related('rubro').all()
+    if q:
+        bienes = bienes.filter(
+            Q(nombre__icontains=q) |
+            Q(catalogo__icontains=q) |
+            Q(renglon__icontains=q)
+        )
+    if rubro_id:
+        bienes = bienes.filter(rubro_id=rubro_id)
+    bienes = bienes.order_by('nombre')
+    rubros = Rubro.objects.all().order_by('nombre')
+    return render(request, 'inventario/bienes_list.html', {'bienes': bienes, 'q': q, 'rubros': rubros, 'rubro_id': rubro_id})
  
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -30,7 +47,14 @@ from django.core.paginator import Paginator, EmptyPage
 
 @login_required
 def remitos_list(request):
-    remitos = Entrega.objects.all().order_by('-fecha')
+    q = request.GET.get('q', '').strip()
+    remitos = Entrega.objects.all()
+    if q:
+        remitos = remitos.filter(
+            Q(area_persona__icontains=q) |
+            Q(observaciones__icontains=q)
+        )
+    remitos = remitos.order_by('-fecha')
     paginator = Paginator(remitos, 20)
     page_number = request.GET.get('page')
     try:
@@ -731,7 +755,14 @@ from django.urls import reverse
 
 @login_required
 def ordenes_list(request):
-    ordenes_qs = OrdenDeCompra.objects.all().order_by('-fecha_inicio')
+    q = request.GET.get('q', '').strip()
+    ordenes_qs = OrdenDeCompra.objects.all()
+    if q:
+        ordenes_qs = ordenes_qs.filter(
+            Q(numero__icontains=q) |
+            Q(proveedor__icontains=q)
+        )
+    ordenes_qs = ordenes_qs.order_by('-fecha_inicio')
     paginator = Paginator(ordenes_qs, 20)
     page_number = request.GET.get('page')
     try:
@@ -746,7 +777,7 @@ def ordenes_list(request):
         page_obj = paginator.page(page_number_int)
     except EmptyPage:
         page_obj = paginator.page(1)
-    return render(request, 'inventario/orden_list.html', {'page_obj': page_obj})
+    return render(request, 'inventario/orden_list.html', {'page_obj': page_obj, 'q': q})
 
 # Detalle de una orden de compra
 @login_required
