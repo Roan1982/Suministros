@@ -898,17 +898,29 @@ class EntregaItemForm(forms.ModelForm):
 @login_required
 def dashboard(request):
     from django.db.models import Sum
-    entregas = Entrega.objects.order_by('-fecha')[:10]
+    from datetime import date, timedelta
+    # Órdenes de compra próximas a vencer (fecha_fin dentro de los próximos 4 meses)
+    hoy = date.today()
+    cuatro_meses = hoy + timedelta(days=120)
+    ordenes_vencer = []
+    from .models import OrdenDeCompra
+    for oc in OrdenDeCompra.objects.exclude(fecha_fin=None):
+        if hoy <= oc.fecha_fin <= cuatro_meses:
+            ordenes_vencer.append(oc)
+
+    # Productos bajos de stock (stock <= 10)
     bienes = Bien.objects.all()
-    stock_data = []
+    bajos_stock = []
     for bien in bienes:
         comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
         entregado = EntregaItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
         stock_actual = comprado - entregado
-        stock_data.append({'bien': bien, 'stock': stock_actual})
+        if stock_actual <= 10:
+            bajos_stock.append({'bien': bien, 'stock': stock_actual})
+
     return render(request, 'inventario/dashboard.html', {
-        'entregas': entregas,
-        'stock_data': stock_data
+        'ordenes_vencer': ordenes_vencer,
+        'bajos_stock': bajos_stock
     })
 
 @login_required

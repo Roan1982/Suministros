@@ -1,43 +1,36 @@
 {% extends 'inventario/base.html' %}
 {% block content %}
-<h1>Panel de Stock</h1>
-<div class="mb-3">
-  <a href="{% url 'agregar_orden' %}" class="btn btn-success">+ Nueva Orden de Compra</a>
-</div>
+<h1>Dashboard de Stock</h1>
 <div class="row">
   <div class="col-md-6">
-    <h2>Últimos Remitos</h2>
+    <h2>Órdenes de Compra Próximas a Vencer</h2>
     <table class="table table-striped">
-      <thead><tr><th>ID</th><th>Fecha</th><th>Área/Persona</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Número</th><th>Proveedor</th><th>Fecha Fin</th></tr></thead>
       <tbody>
-        {% for entrega in entregas %}
+        {% for oc in ordenes_vencer %}
         <tr>
-          <td>{{ entrega.id }}</td>
-          <td>{{ entrega.fecha|date:"d/m/Y H:i" }}</td>
-          <td>{{ entrega.area_persona }}</td>
-          <td>
-            <a href="{% url 'remito_print' entrega.id %}" class="btn btn-sm btn-outline-secondary">Ver/Imprimir</a>
-            <a href="{% url 'remito_pdf' entrega.id %}" class="btn btn-sm btn-outline-primary">PDF</a>
-          </td>
+          <td>{{ oc.numero }}</td>
+          <td>{{ oc.proveedor }}</td>
+          <td>{{ oc.fecha_fin|date:"d/m/Y" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No hay remitos registrados.</td></tr>
+        <tr><td colspan="3">No hay órdenes próximas a vencer.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   <div class="col-md-6">
-    <h2>Stock Actual</h2>
+    <h2>Productos Bajos de Stock</h2>
     <table class="table table-bordered">
       <thead><tr><th>Producto</th><th>Stock</th></tr></thead>
       <tbody>
-        {% for s in stock_data %}
+        {% for s in bajos_stock %}
         <tr>
           <td>{{ s.bien }}</td>
           <td>{{ s.stock }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="2">No hay stock registrado.</td></tr>
+        <tr><td colspan="2">No hay productos bajos de stock.</td></tr>
         {% endfor %}
       </tbody>
     </table>
