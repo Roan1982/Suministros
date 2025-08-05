@@ -18,6 +18,21 @@ from django.core.paginator import Paginator, EmptyPage
 @login_required
 def remitos_list(request):
     remitos = Entrega.objects.all().order_by('-fecha')
+    paginator = Paginator(remitos, 20)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    return render(request, 'inventario/remitos_list.html', {'page_obj': page_obj})
 
 # Vista dashboard de reportes (cards)
 @login_required
