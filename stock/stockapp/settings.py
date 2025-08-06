@@ -25,8 +25,8 @@ SESSION_COOKIE_AGE = 900  # 15 minutes in seconds
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Use a custom session cookie name to avoid browser restoration issues
 SESSION_COOKIE_NAME = 'almacenes_sessionid'
-# Do not save session on every request (default, but explicit)
-SESSION_SAVE_EVERY_REQUEST = False
+# Save session on every request to reset inactivity timer
+SESSION_SAVE_EVERY_REQUEST = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-vu^c6sk8_uktjdd@5kb@6j3^$9y-nmb54ez=dq@w+u*g$d#0ej'
