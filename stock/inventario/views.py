@@ -492,51 +492,64 @@ def reporte_entregas_anio(request):
     from reportlab.lib.styles import getSampleStyleSheet
     from django.db.models.functions import ExtractYear
 
-    entregas = Entrega.objects.annotate(anio=ExtractYear('fecha'))
-    resumen = entregas.values('anio').annotate(
-        cantidad=Sum(1),
-        total=Sum('items__precio_total')
-    ).order_by('anio')
-
+    # --- NUEVA IMPLEMENTACIÓN: Totales y detalle por año, rubro y bien ---
+    from collections import defaultdict
+    from django.db.models import F, DecimalField, ExpressionWrapper
+    # Totales por año
+    resumen = (
+        EntregaItem.objects
+        .annotate(anio=ExtractYear('entrega__fecha'), subtotal=F('cantidad') * F('precio_unitario'))
+        .values('anio')
+        .annotate(
+            cantidad=Sum('cantidad'),
+            total=Sum('subtotal', output_field=DecimalField(max_digits=20, decimal_places=2))
+        )
+        .order_by('anio')
+    )
     totales = []
-    excel_rows = []
     for row in resumen:
         totales.append({
             'anio': row['anio'],
             'cantidad': row['cantidad'],
             'total': float(row['total'] or 0),
         })
-        excel_rows.append({
-            'Año': row['anio'],
-            'Cantidad de Entregas': row['cantidad'],
-            'Monto Total ($)': float(row['total'] or 0),
+
+    # Detalle por año, rubro y bien
+    items = (
+        EntregaItem.objects
+        .select_related('bien__rubro')
+        .annotate(anio=ExtractYear('entrega__fecha'), subtotal=F('cantidad') * F('precio_unitario'))
+        .values('anio', 'bien__rubro__nombre', 'bien__nombre')
+        .annotate(
+            cantidad=Sum('cantidad'),
+            total=Sum('subtotal', output_field=DecimalField(max_digits=20, decimal_places=2))
+        )
+        .order_by('anio', 'bien__rubro__nombre', 'bien__nombre')
+    )
+    detalles_por_anio = defaultdict(list)
+    for row in items:
+        detalles_por_anio[row['anio']].append({
+            'rubro': row['bien__rubro__nombre'],
+            'bien': row['bien__nombre'],
+            'cantidad': row['cantidad'],
+            'total': float(row['total'] or 0),
         })
+    detalles_por_anio_list = [
+        {'anio': anio, 'detalle': detalles_por_anio[anio]}
+        for anio in sorted(detalles_por_anio.keys())
+    ]
 
-    # Detalle por rubro y bien del último año
-    ultimo_anio = max([r['anio'] for r in totales if r['anio'] is not None], default=None)
-    detalle = []
-    if ultimo_anio:
-        from .models import Bien, Rubro
-        items = EntregaItem.objects.filter(entrega__fecha__year=ultimo_anio)
-        bienes = Bien.objects.select_related('rubro').all()
-        for bien in bienes:
-            cantidad = items.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
-            total = items.filter(bien=bien).aggregate(suma=Sum('precio_total'))['suma'] or 0
-            if cantidad > 0:
-                detalle.append({
-                    'rubro': bien.rubro.nombre if bien.rubro else '',
-                    'bien': bien.nombre,
-                    'cantidad': cantidad,
-                    'total': float(total),
-                })
-
-    data = {'totales': totales, 'detalle': detalle, 'ultimo_anio': ultimo_anio}
+    data = {'totales': totales, 'detalles_por_anio': detalles_por_anio_list}
 
     if request.GET.get('export') == 'excel':
-        # Exportar ambos: totales y detalle
+        # Exportar ambos: totales y detalle por año
+        import pandas as pd
         with pd.ExcelWriter('entregas_por_anio.xlsx', engine='openpyxl') as writer:
-            pd.DataFrame(excel_rows).to_excel(writer, sheet_name='Totales por año', index=False)
-            pd.DataFrame(detalle).to_excel(writer, sheet_name='Detalle último año', index=False)
+            pd.DataFrame([{ 'Año': t['anio'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total']} for t in totales]).to_excel(writer, sheet_name='Totales por año', index=False)
+            for anio in detalles_por_anio_list:
+                df = pd.DataFrame(anio['detalle'])
+                df.rename(columns={'rubro': 'Rubro', 'bien': 'Bien', 'cantidad': 'Cantidad Entregada', 'total': 'Monto Total ($)'}, inplace=True)
+                df.to_excel(writer, sheet_name=f"Detalle {anio['anio']}", index=False)
             writer.save()
             with open('entregas_por_anio.xlsx', 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -552,8 +565,8 @@ def reporte_entregas_anio(request):
         elements.append(Paragraph('Entregas por Año', styles['Title']))
         elements.append(Spacer(1, 12))
         table_data = [["Año", "Cantidad de Entregas", "Monto Total ($)"]]
-        for row in excel_rows:
-            table_data.append([row['Año'], row['Cantidad de Entregas'], f"{row['Monto Total ($)']:.2f}"])
+        for t in totales:
+            table_data.append([t['anio'], t['cantidad'], f"{t['total']:.2f}"])
         t = Table(table_data, repeatRows=1)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.grey),
@@ -566,21 +579,23 @@ def reporte_entregas_anio(request):
         ]))
         elements.append(t)
         elements.append(Spacer(1, 24))
-        elements.append(Paragraph(f'Detalle por rubro y bien (último año: {ultimo_anio})', styles['Heading3']))
-        table_data2 = [["Rubro", "Bien", "Cantidad Entregada", "Monto Total ($)"]]
-        for row in detalle:
-            table_data2.append([row['rubro'], row['bien'], row['cantidad'], f"{row['total']:.2f}"])
-        t2 = Table(table_data2, repeatRows=1)
-        t2.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
-            ('GRID', (0,0), (-1,-1), 1, colors.black),
-        ]))
-        elements.append(t2)
+        for anio in detalles_por_anio_list:
+            elements.append(Paragraph(f'Detalle por rubro y bien (año: {anio["anio"]})', styles['Heading3']))
+            table_data2 = [["Rubro", "Bien", "Cantidad Entregada", "Monto Total ($)"]]
+            for row in anio['detalle']:
+                table_data2.append([row['rubro'], row['bien'], row['cantidad'], f"{row['total']:.2f}"])
+            t2 = Table(table_data2, repeatRows=1)
+            t2.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ]))
+            elements.append(t2)
+            elements.append(Spacer(1, 12))
         doc.build(elements)
         return response
 
