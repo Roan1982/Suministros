@@ -1,78 +1,87 @@
 {% extends 'inventario/base.html' %}
 {% load form_extras %}
 {% block content %}
-<div class="row mb-4 g-4 justify-content-center w-100">
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Stock por rubro">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-cubes-stacked text-info"></i> Estado de stock por rubro</h5>
-        <p class="card-text small">Visualiza el stock agrupado por rubro y exporta a Excel o PDF.</p>
-        <a href="{% url 'reporte_stock_rubro' %}" class="btn btn-outline-info mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+<div class="card mt-5 w-100">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="mb-0"><i class="fa-solid fa-chart-pie"></i> Reportes</h3>
+    </div>
+    <!-- Primera fila: 4 cards -->
+    <div class="row justify-content-center mb-4 gap-4">
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Stock por rubro">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-cubes-stacked text-info"></i> Estado de stock por rubro</h5>
+            <p class="card-text small">Visualiza el stock agrupado por rubro y exporta a Excel o PDF.</p>
+            <a href="{% url 'reporte_stock_rubro' %}" class="btn btn-outline-info mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Stock por bien">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-boxes-packing text-success"></i> Estado de stock por bien</h5>
+            <p class="card-text small">Consulta el stock disponible de cada bien y su historial de entregas.</p>
+            <a href="{% url 'reporte_stock_bien' %}" class="btn btn-outline-success mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Entregas por año">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-calendar-days text-warning"></i> Total de entregas por año</h5>
+            <p class="card-text small">Analiza las entregas realizadas cada año, agrupadas por rubro y bien.</p>
+            <a href="{% url 'reporte_entregas_anio' %}" class="btn btn-outline-warning mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Entregas por área/persona">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-users text-secondary"></i> Entregas por área/persona</h5>
+            <p class="card-text small">Consulta qué áreas o personas recibieron bienes y en qué cantidad.</p>
+            <a href="{% url 'reporte_entregas_area' %}" class="btn btn-outline-secondary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Stock por bien">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-boxes-packing text-success"></i> Estado de stock por bien</h5>
-        <p class="card-text small">Consulta el stock disponible de cada bien y su historial de entregas.</p>
-        <a href="{% url 'reporte_stock_bien' %}" class="btn btn-outline-success mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+    <!-- Segunda fila: 3 cards -->
+    <div class="row justify-content-center mb-4 gap-4">
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Ranking de bienes">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-ranking-star text-danger"></i> Ranking de bienes más entregados</h5>
+            <p class="card-text small">Descubre los bienes más entregados en el período seleccionado.</p>
+            <a href="{% url 'reporte_ranking_bienes' %}" class="btn btn-outline-danger mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Entregas por año">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-calendar-days text-warning"></i> Total de entregas por año</h5>
-        <p class="card-text small">Analiza las entregas realizadas cada año, agrupadas por rubro y bien.</p>
-        <a href="{% url 'reporte_entregas_anio' %}" class="btn btn-outline-warning mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Ranking de proveedores">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-truck-field text-primary"></i> Ranking de proveedores</h5>
+            <p class="card-text small">Visualiza los proveedores con mayor volumen de bienes entregados.</p>
+            <a href="{% url 'reporte_ranking_proveedores' %}" class="btn btn-outline-primary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Entregas por área/persona">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-users text-secondary"></i> Entregas por área/persona</h5>
-        <p class="card-text small">Consulta qué áreas o personas recibieron bienes y en qué cantidad.</p>
-        <a href="{% url 'reporte_entregas_area' %}" class="btn btn-outline-secondary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+      <div class="col-auto">
+        <div class="card h-100 shadow border-0" style="min-width: 260px; max-width: 280px;">
+          <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=200&q=80" class="card-img-top" style="height: 140px; object-fit: cover;" alt="Reporte personalizado">
+          <div class="card-body d-flex flex-column p-2">
+            <h5 class="card-title"><i class="fa-solid fa-sliders text-primary"></i> Reporte personalizado</h5>
+            <p class="card-text small">Filtra y exporta datos a medida según tus propios criterios.</p>
+            <a href="{% url 'reporte_personalizado' %}" class="btn btn-outline-primary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Ranking de bienes">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-ranking-star text-danger"></i> Ranking de bienes más entregados</h5>
-        <p class="card-text small">Descubre los bienes más entregados en el período seleccionado.</p>
-        <a href="{% url 'reporte_ranking_bienes' %}" class="btn btn-outline-danger mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow border-0">
-      <img src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Ranking de proveedores">
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title"><i class="fa-solid fa-truck-field text-primary"></i> Ranking de proveedores</h5>
-        <p class="card-text small">Visualiza los proveedores con mayor volumen de bienes entregados.</p>
-        <a href="{% url 'reporte_ranking_proveedores' %}" class="btn btn-outline-primary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
-      </div>
-    </div>
-  </div>
-<!-- Card de Reporte personalizado -->
-<div class="col-md-4 col-lg-3">
-  <div class="card h-100 shadow border-0">
-    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="Reporte personalizado">
-    <div class="card-body d-flex flex-column">
-      <h5 class="card-title"><i class="fa-solid fa-sliders text-primary"></i> Reporte personalizado</h5>
-      <p class="card-text small">Filtra y exporta datos a medida según tus propios criterios.</p>
-      <a href="{% url 'reporte_personalizado' %}" class="btn btn-outline-primary mt-auto"><i class="fa-solid fa-arrow-right"></i> Ver reporte</a>
     </div>
   </div>
 </div>
-</div>
-
 {% endblock %}

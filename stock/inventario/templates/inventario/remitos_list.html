@@ -1,8 +1,10 @@
 {% extends 'inventario/base.html' %}
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Remitos</h2>
-        <a href="{% url 'crear_entrega' %}" class="btn btn-success shadow-sm"><i class="bi bi-plus-circle"></i> Nuevo Remito</a>
+<div class="card mt-5 w-100">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="mb-0"><i class="fa-solid fa-file-invoice"></i> Remitos</h3>
+      <a href="{% url 'crear_entrega' %}" class="btn btn-success"><i class="fa-solid fa-plus"></i> Nuevo Remito</a>
     </div>
     <form method="get" class="mb-3">
         <div class="input-group" style="max-width:400px;">
@@ -42,4 +44,6 @@
     <div class="mt-4">
         {% include 'inventario/paginador.html' %}
     </div>
+  </div>
+</div>
 {% endblock %}
