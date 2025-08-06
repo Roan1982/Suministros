@@ -495,7 +495,9 @@ def reporte_entregas_anio(request):
     # --- NUEVA IMPLEMENTACIÓN: Totales y detalle por año, rubro y bien ---
     from collections import defaultdict
     from django.db.models import F, DecimalField, ExpressionWrapper
-    # Totales por año
+    # --- NUEVA IMPLEMENTACIÓN: solapas por año y exportación filtrada ---
+    anio_param = request.GET.get('anio')
+    # Totales por año (para tabs)
     resumen = (
         EntregaItem.objects
         .annotate(anio=ExtractYear('entrega__fecha'), subtotal=F('cantidad') * F('precio_unitario'))
@@ -514,11 +516,21 @@ def reporte_entregas_anio(request):
             'total': float(row['total'] or 0),
         })
 
+    # Si hay año seleccionado, filtrar detalle solo para ese año
+    if anio_param:
+        try:
+            anio_int = int(anio_param)
+        except Exception:
+            anio_int = None
+    else:
+        anio_int = None
+
     # Detalle por año, rubro y bien
+    items_qs = EntregaItem.objects.select_related('bien__rubro').annotate(anio=ExtractYear('entrega__fecha'), subtotal=F('cantidad') * F('precio_unitario'))
+    if anio_int:
+        items_qs = items_qs.filter(anio=anio_int)
     items = (
-        EntregaItem.objects
-        .select_related('bien__rubro')
-        .annotate(anio=ExtractYear('entrega__fecha'), subtotal=F('cantidad') * F('precio_unitario'))
+        items_qs
         .values('anio', 'bien__rubro__nombre', 'bien__nombre')
         .annotate(
             cantidad=Sum('cantidad'),
@@ -539,33 +551,40 @@ def reporte_entregas_anio(request):
         for anio in sorted(detalles_por_anio.keys())
     ]
 
-    data = {'totales': totales, 'detalles_por_anio': detalles_por_anio_list}
+    # Si hay año seleccionado, mostrar solo ese año en detalles_por_anio_list
+    if anio_int:
+        detalles_por_anio_list = [d for d in detalles_por_anio_list if d['anio'] == anio_int]
 
-    if request.GET.get('export') == 'excel':
-        # Exportar ambos: totales y detalle por año
+    data = {'totales': totales, 'detalles_por_anio': detalles_por_anio_list, 'anio_seleccionado': anio_int}
+
+    if request.GET.get('export') == 'excel' and anio_int:
         import pandas as pd
-        with pd.ExcelWriter('entregas_por_anio.xlsx', engine='openpyxl') as writer:
-            pd.DataFrame([{ 'Año': t['anio'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total']} for t in totales]).to_excel(writer, sheet_name='Totales por año', index=False)
-            for anio in detalles_por_anio_list:
+        # Exportar solo el año seleccionado
+        totales_sel = [t for t in totales if t['anio'] == anio_int]
+        detalles_sel = [d for d in detalles_por_anio_list if d['anio'] == anio_int]
+        with pd.ExcelWriter(f'entregas_{anio_int}.xlsx', engine='openpyxl') as writer:
+            pd.DataFrame([{ 'Año': t['anio'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total']} for t in totales_sel]).to_excel(writer, sheet_name='Totales', index=False)
+            for anio in detalles_sel:
                 df = pd.DataFrame(anio['detalle'])
                 df.rename(columns={'rubro': 'Rubro', 'bien': 'Bien', 'cantidad': 'Cantidad Entregada', 'total': 'Monto Total ($)'}, inplace=True)
                 df.to_excel(writer, sheet_name=f"Detalle {anio['anio']}", index=False)
             writer.save()
-            with open('entregas_por_anio.xlsx', 'rb') as f:
+            with open(f'entregas_{anio_int}.xlsx', 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition'] = 'attachment; filename=entregas_por_anio.xlsx'
+                response['Content-Disposition'] = f'attachment; filename=entregas_{anio_int}.xlsx'
                 return response
 
-    if request.GET.get('export') == 'pdf':
+    if request.GET.get('export') == 'pdf' and anio_int:
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename=entregas_por_anio.pdf'
+        response['Content-Disposition'] = f'attachment; filename=entregas_{anio_int}.pdf'
         doc = SimpleDocTemplate(response, pagesize=letter)
         elements = []
         styles = getSampleStyleSheet()
-        elements.append(Paragraph('Entregas por Año', styles['Title']))
+        elements.append(Paragraph(f'Entregas año {anio_int}', styles['Title']))
         elements.append(Spacer(1, 12))
+        totales_sel = [t for t in totales if t['anio'] == anio_int]
         table_data = [["Año", "Cantidad de Entregas", "Monto Total ($)"]]
-        for t in totales:
+        for t in totales_sel:
             table_data.append([t['anio'], t['cantidad'], f"{t['total']:.2f}"])
         t = Table(table_data, repeatRows=1)
         t.setStyle(TableStyle([
