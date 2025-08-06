@@ -888,15 +888,31 @@ from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.urls import reverse
 
+
 class RubroForm(forms.ModelForm):
     class Meta:
         model = Rubro
         fields = ['nombre']
 
+    def clean_nombre(self):
+        nombre = self.cleaned_data['nombre'].strip()
+        if Rubro.objects.filter(nombre__iexact=nombre).exists():
+            raise forms.ValidationError('Ya existe un rubro con ese nombre.')
+        return nombre
+
+
 class BienForm(forms.ModelForm):
     class Meta:
         model = Bien
         fields = ['rubro', 'nombre', 'catalogo']
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data['nombre'].strip()
+        rubro = self.cleaned_data.get('rubro')
+        if rubro and Bien.objects.filter(nombre__iexact=nombre, rubro=rubro).exists():
+            raise forms.ValidationError('Ya existe un bien con ese nombre en este rubro.')
+        return nombre
+
 
 class OrdenDeCompraForm(forms.ModelForm):
     fecha_inicio = forms.DateField(
@@ -914,6 +930,12 @@ class OrdenDeCompraForm(forms.ModelForm):
     class Meta:
         model = OrdenDeCompra
         fields = ['numero', 'fecha_inicio', 'fecha_fin', 'proveedor']
+
+    def clean_numero(self):
+        numero = self.cleaned_data['numero']
+        if OrdenDeCompra.objects.filter(numero=numero).exists():
+            raise forms.ValidationError('Ya existe una orden de compra con ese número.')
+        return numero
 
 
 class EntregaForm(forms.ModelForm):
