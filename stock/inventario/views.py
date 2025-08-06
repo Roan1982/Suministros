@@ -598,38 +598,46 @@ def reporte_entregas_area(request):
     from reportlab.lib.styles import getSampleStyleSheet
 
     # Totales por área/persona
-    resumen = Entrega.objects.values('area_persona').annotate(
+    from .models import EntregaItem
+    from django.db.models.functions import ExtractYear
+    totales_qs = Entrega.objects.values('area_persona').annotate(
         cantidad=Sum(1),
         total=Sum('items__precio_total')
     ).order_by('area_persona')
+    totales = [
+        {'area': row['area_persona'], 'cantidad': row['cantidad'], 'total': float(row['total'] or 0)}
+        for row in totales_qs
+    ]
 
-    totales = []
-    for row in resumen:
-        totales.append({
-            'area': row['area_persona'],
-            'cantidad': row['cantidad'],
-            'total': float(row['total'] or 0),
-        })
-
-    # Detalle de bienes entregados por área/persona
-    detalle_qs = EntregaItem.objects.values('entrega__area_persona', 'bien__nombre').annotate(
+    # Detalle por año, área/persona y bien
+    detalle_qs = EntregaItem.objects.annotate(
+        anio=ExtractYear('entrega__fecha')
+    ).values('anio', 'entrega__area_persona', 'bien__nombre').annotate(
         cantidad=Sum('cantidad')
-    ).order_by('entrega__area_persona', 'bien__nombre')
+    ).order_by('anio', 'entrega__area_persona', 'bien__nombre')
 
-    detalle = []
+    # Agrupar para el template: {anio: {detalle: [{area, bien, cantidad}]}}
+    from collections import defaultdict
+    detalles_por_anio = defaultdict(list)
     for row in detalle_qs:
-        detalle.append({
+        detalles_por_anio[row['anio']].append({
             'area': row['entrega__area_persona'],
             'bien': row['bien__nombre'],
             'cantidad': row['cantidad'],
         })
+    detalles_por_anio = [
+        {'anio': anio, 'detalle': detalles}
+        for anio, detalles in sorted(detalles_por_anio.items())
+    ]
 
     # Para exportar a Excel
     if request.GET.get('export') == 'excel':
-        # Dos hojas: Totales y Detalle
         with pd.ExcelWriter('entregas_por_area_temp.xlsx', engine='openpyxl') as writer:
             df_totales = pd.DataFrame([{ 'Área / Persona': t['area'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total'] } for t in totales])
-            df_detalle = pd.DataFrame([{ 'Área / Persona': d['area'], 'Bien': d['bien'], 'Cantidad Entregada': d['cantidad'] } for d in detalle])
+            df_detalle = pd.DataFrame([
+                { 'Año': d['anio'], 'Área / Persona': d['area'], 'Bien': d['bien'], 'Cantidad Entregada': d['cantidad'] }
+                for d in detalle_qs
+            ])
             df_totales.to_excel(writer, sheet_name='Totales', index=False)
             df_detalle.to_excel(writer, sheet_name='Detalle', index=False)
             writer.save()
@@ -664,26 +672,28 @@ def reporte_entregas_area(request):
         ]))
         elements.append(t1)
         elements.append(Spacer(1, 18))
-        # Detalle
-        elements.append(Paragraph('Detalle de bienes entregados', styles['Heading2']))
-        table_data2 = [["Área / Persona", "Bien", "Cantidad Entregada"]]
-        for d in detalle:
-            table_data2.append([d['area'], d['bien'], d['cantidad']])
-        t2 = Table(table_data2, repeatRows=1)
-        t2.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
-            ('GRID', (0,0), (-1,-1), 1, colors.black),
-        ]))
-        elements.append(t2)
+        # Detalle por año
+        for anio in detalles_por_anio:
+            elements.append(Paragraph(f"Año: {anio['anio']}", styles['Heading3']))
+            table_data2 = [["Área / Persona", "Bien", "Cantidad Entregada"]]
+            for d in anio['detalle']:
+                table_data2.append([d['area'], d['bien'], d['cantidad']])
+            t2 = Table(table_data2, repeatRows=1)
+            t2.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ]))
+            elements.append(t2)
+            elements.append(Spacer(1, 12))
         doc.build(elements)
         return response
 
-    return render(request, 'inventario/reporte_entregas_area.html', {'data': {'totales': totales, 'detalle': detalle}})
+    return render(request, 'inventario/reporte_entregas_area.html', {'data': {'totales': totales, 'detalles_por_anio': detalles_por_anio}})
 
 @login_required
 def reporte_ranking_bienes(request):
