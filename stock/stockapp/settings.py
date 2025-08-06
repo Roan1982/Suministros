@@ -16,8 +16,17 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+
+# --- Session settings ---
+# Session expires after 15 minutes of inactivity
+SESSION_COOKIE_AGE = 900  # 15 minutes in seconds
+# Session expires when browser/tab is closed (browser-dependent)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Use a custom session cookie name to avoid browser restoration issues
+SESSION_COOKIE_NAME = 'almacenes_sessionid'
+# Do not save session on every request (default, but explicit)
+SESSION_SAVE_EVERY_REQUEST = False
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-vu^c6sk8_uktjdd@5kb@6j3^$9y-nmb54ez=dq@w+u*g$d#0ej'
@@ -103,9 +112,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Configuración regional Argentina
+LANGUAGE_CODE = 'es-ar'
+TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
 USE_I18N = True
 
