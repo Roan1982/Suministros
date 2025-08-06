@@ -28,6 +28,7 @@
         <tr>
           <th>Nombre</th>
           <th>Rubro</th>
+          <th>Stock</th>
         </tr>
       </thead>
       <tbody>
@@ -35,9 +36,10 @@
         <tr>
           <td>{{ bien.nombre }}</td>
           <td>{{ bien.rubro }}</td>
+          <td>{{ bien.stock|default:0 }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="2" class="text-center">No hay bienes registrados.</td></tr>
+        <tr><td colspan="3" class="text-center">No hay bienes registrados.</td></tr>
         {% endfor %}
       </tbody>
     </table>

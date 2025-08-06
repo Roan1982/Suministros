@@ -16,7 +16,8 @@ def rubros_list(request):
 def bienes_list(request):
     q = request.GET.get('q', '').strip()
     rubro_id = request.GET.get('rubro')
-    bienes = Bien.objects.select_related('rubro').all()
+    from django.db.models import Sum
+    bienes = Bien.objects.select_related('rubro').annotate(stock=Sum('entregaitem__cantidad'))
     if q:
         bienes = bienes.filter(
             Q(nombre__icontains=q) |
