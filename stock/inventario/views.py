@@ -905,6 +905,22 @@ class BienForm(forms.ModelForm):
     class Meta:
         model = Bien
         fields = ['rubro', 'nombre', 'catalogo']
+        widgets = {
+            'rubro': forms.Select(attrs={
+                'class': 'form-control select2-dropdown',
+                'data-placeholder': 'Seleccione un rubro...'
+            }),
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'placeholder': 'Nombre del bien'
+            }),
+            'catalogo': forms.TextInput(attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'placeholder': 'Catálogo (opcional)'
+            }),
+        }
 
     def clean_nombre(self):
         nombre = self.cleaned_data['nombre'].strip()

@@ -41,6 +41,29 @@
         .icon-anim {
             /* Animación eliminada para compatibilidad PDF */
         }
+        /* --- Mejorar alineación del clear (X) de select2 --- */
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear {
+            position: absolute;
+            right: 1.5rem;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+            height: 1.5em;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+            font-size: 1.2em;
+            color: #888;
+            opacity: 0.8;
+        }
+        .select2-container--bootstrap-5 .select2-selection--single {
+            position: relative;
+        }
+        /* Opcional: mejorar el hover de la X */
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover {
+            color: #dc3545;
+            opacity: 1;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

@@ -8,7 +8,7 @@
         <h2 class="mb-4 fw-bold text-primary">
           <i class="fa-solid fa-layer-group me-2"></i>Agregar Bien
         </h2>
-        <form method="post" autocomplete="off">
+        <form method="post" autocomplete="off" id="form-agregar-bien">
           {% csrf_token %}
           <div class="mb-4">
             {% for field in form %}
@@ -38,4 +38,18 @@
 
 {% block extra_js %}
 <script src="{% static 'inventario/formset_dynamic.js' %}"></script>
+<script>
+  $(document).ready(function() {
+    // Aplica select2 con bootstrap-5 al campo rubro
+    $("#form-agregar-bien select[name='rubro']").select2({
+      width: '100%',
+      theme: 'bootstrap-5',
+      placeholder: 'Seleccione un rubro',
+      allowClear: true,
+      language: 'es'
+    });
+    // Corrige el padding y alineación para select2-bootstrap5
+    $("#form-agregar-bien .select2-container--bootstrap-5 .select2-selection").addClass('form-control');
+  });
+</script>
 {% endblock %}
