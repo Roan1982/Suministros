@@ -30,6 +30,7 @@
                   <tr>
                     <th><i class="fa-solid fa-box"></i> Bien</th>
                     <th><i class="fa-solid fa-cubes"></i> Stock</th>
+                    <th><i class="fa-solid fa-dollar-sign"></i> Valor en Stock ($)</th>
                     <th><i class="fa-solid fa-truck"></i> Total Entregado</th>
                     <th><i class="fa-solid fa-dollar-sign"></i> Valor Entregado ($)</th>
                   </tr>
@@ -39,6 +40,7 @@
                   <tr class="rubro-row">
                     <td>{{ b.bien.nombre }}</td>
                     <td>{{ b.stock }}</td>
+                    <td>${{ b.valor_stock|floatformat:2 }}</td>
                     <td>{{ b.entregado }}</td>
                     <td>${{ b.valor|floatformat:2 }}</td>
                   </tr>

@@ -315,16 +315,26 @@ def reporte_stock_rubro(request):
                 total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
             )
             stock = comprado - (entregado['total'] or 0)
+            # Calcular precio_unitario promedio ponderado
+            from django.db.models import FloatField
+            suma_precio_total = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(
+                suma=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=FloatField()))
+            )['suma'] or 0
+            cantidad_total = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            precio_unitario_prom = (suma_precio_total / cantidad_total) if cantidad_total else 0
+            valor_stock = stock * precio_unitario_prom
             row = {
                 'Rubro': rubro.nombre,
                 'Bien': bien.nombre,
                 'Stock': stock,
+                'Valor_Stock': valor_stock,
                 'Total Entregado': entregado['total'] or 0,
                 'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
             }
             bienes_data.append({
                 'bien': bien,
                 'stock': stock,
+                'valor_stock': valor_stock,
                 'entregado': entregado['total'] or 0,
                 'valor': entregado['total_pesos'] or 0,
             })
@@ -395,10 +405,18 @@ def reporte_stock_bien(request):
             total_pesos=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DecimalField(max_digits=14, decimal_places=2)))
         )
         stock = comprado - (entregado['total'] or 0)
+        from django.db.models import FloatField
+        suma_precio_total = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(
+            suma=Sum(ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=FloatField()))
+        )['suma'] or 0
+        cantidad_total = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+        precio_unitario_prom = (suma_precio_total / cantidad_total) if cantidad_total else 0
+        valor_stock = stock * precio_unitario_prom
         row = {
             'Rubro': bien.rubro.nombre if bien.rubro else '',
             'Bien': bien.nombre,
             'Stock': stock,
+            'Valor_Stock': valor_stock,
             'Total_Entregado': entregado['total'] or 0,
             'Valor_Entregado': float(entregado['total_pesos'] or 0),
         }
@@ -407,6 +425,7 @@ def reporte_stock_bien(request):
             'Rubro': bien.rubro.nombre if bien.rubro else '',
             'Bien': bien.nombre,
             'Stock': stock,
+            'Valor en Stock ($)': valor_stock,
             'Total Entregado': entregado['total'] or 0,
             'Valor Entregado ($)': float(entregado['total_pesos'] or 0),
         })
