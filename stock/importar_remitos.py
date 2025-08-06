@@ -13,79 +13,87 @@ from inventario.models  import Entrega, EntregaItem, OrdenDeCompra, Bien, OrdenD
 archivo = "stock/pedidos.xlsx"
 df = pd.read_excel(archivo)
 
-# Contador para número de pedido
-numero_pedido_auto = 1
 
-for idx, row in df.iterrows():
-    try:
-        nro_pedido = row.get("N° DE PEDIDO")
-        if pd.isna(nro_pedido):
-            nro_pedido = f"AUTO-{numero_pedido_auto}"
-            numero_pedido_auto += 1
+# Crear o reutilizar un único remito (Entrega) con id=0
+from django.db import transaction
 
-        dependencia = str(row["DEPENDENCIA"]).strip().upper() if pd.notna(row["DEPENDENCIA"]) else "PEDIDO ANTERIOR"
-        fecha_entrega = row["FECHA DE ENTREGA"]
-        if pd.isna(fecha_entrega):
-            fecha_entrega = datetime(2025, 1, 1)
+with transaction.atomic():
+    # Si ya existe un Entrega con id=0, lo reutiliza; si no, lo crea
+    entrega, created = Entrega.objects.get_or_create(
+        id=0,
+        defaults={
+            "fecha": datetime(2025, 1, 1),
+            "area_persona": "IMPORTACIÓN MASIVA",
+            "observaciones": "IMPORTACIÓN EXCEL - REMITO ÚNICO",
+            "orden_de_compra": None
+        }
+    )
 
-        numero_oc = str(row["ORDEN DE COMPRA"]).strip().upper()
-
-        renglon_raw = str(row["RENGLÓN"]).strip()
+    for idx, row in df.iterrows():
         try:
-            renglon = int(renglon_raw)
-        except:
-            renglon = 0
+            nro_pedido = 0  # ya no se usa, pero se mantiene para compatibilidad
+            dependencia = str(row["DEPENDENCIA"]).strip().upper() if pd.notna(row["DEPENDENCIA"]) else "PEDIDO ANTERIOR"
+            fecha_entrega = row["FECHA DE ENTREGA"]
+            if pd.isna(fecha_entrega):
+                fecha_entrega = datetime(2025, 1, 1)
 
-        bien_nombre = str(row["BIEN"]).strip().upper()
-        cantidad_raw = str(row["CANTIDAD ENTREGADA"]).strip()
-        try:
-            cantidad = int(cantidad_raw)
-        except:
-            print(f"⚠️ Cantidad inválida en fila {idx+2}, se usará 1")
-            cantidad = 1
+            numero_oc = str(row["ORDEN DE COMPRA"]).strip().upper()
 
-        try:
-            oc = OrdenDeCompra.objects.get(numero=numero_oc)
-        except OrdenDeCompra.DoesNotExist:
-            print(f"⚠️ OC '{numero_oc}' no encontrada en fila {idx+2}")
-            continue
+            renglon_raw = str(row["RENGLÓN"]).strip()
+            try:
+                renglon = int(renglon_raw)
+            except Exception:
+                renglon = 0
 
-        try:
-            bien = Bien.objects.get(nombre=bien_nombre)
-        except Bien.DoesNotExist:
-            print(f"⚠️ Bien '{bien_nombre}' no encontrado en fila {idx+2}")
-            continue
+            bien_nombre = str(row["BIEN"]).strip().upper()
+            cantidad_raw = str(row["CANTIDAD ENTREGADA"]).strip()
+            try:
+                cantidad = int(cantidad_raw)
+            except Exception:
+                print(f"⚠️ Cantidad inválida en fila {idx+2}, se usará 1")
+                cantidad = 1
 
-        try:
-            item_oc = OrdenDeCompraItem.objects.get(
+            try:
+                oc = OrdenDeCompra.objects.get(numero=numero_oc)
+            except OrdenDeCompra.DoesNotExist:
+                print(f"⚠️ OC '{numero_oc}' no encontrada en fila {idx+2}")
+                continue
+
+            try:
+                bien = Bien.objects.get(nombre=bien_nombre)
+            except Bien.DoesNotExist:
+                print(f"⚠️ Bien '{bien_nombre}' no encontrado en fila {idx+2}")
+                continue
+
+            try:
+                item_oc = OrdenDeCompraItem.objects.get(
+                    orden_de_compra=oc,
+                    bien=bien,
+                    renglon=renglon
+                )
+                precio_unitario = item_oc.precio_unitario
+            except OrdenDeCompraItem.DoesNotExist:
+                print(f"⚠️ Precio no encontrado para OC '{numero_oc}' - Bien '{bien_nombre}' (fila {idx+2}). Se usará $1.00")
+                precio_unitario = 1.00
+
+            # Actualizar datos generales del remito si se desea (opcional)
+            # entrega.fecha = fecha_entrega
+            # entrega.area_persona = dependencia
+            # entrega.orden_de_compra = oc
+            # entrega.save()
+
+            EntregaItem.objects.create(
+                entrega=entrega,
                 orden_de_compra=oc,
                 bien=bien,
-                renglon=renglon
+                cantidad=cantidad,
+                precio_unitario=precio_unitario,
+                precio_total=cantidad * precio_unitario
             )
-            precio_unitario = item_oc.precio_unitario
-        except OrdenDeCompraItem.DoesNotExist:
-            print(f"⚠️ Precio no encontrado para OC '{numero_oc}' - Bien '{bien_nombre}' (fila {idx+2}). Se usará $1.00")
-            precio_unitario = 1.00
 
-        entrega = Entrega.objects.create(
-            fecha=fecha_entrega,
-            area_persona=dependencia,
-            observaciones=f"IMPORTACIÓN EXCEL - PEDIDO {nro_pedido}",
-            orden_de_compra=oc
-        )
+            print(f"✅ Entrega creada (pedido {nro_pedido}) - Bien: {bien_nombre} - Cant: {cantidad}")
 
-        EntregaItem.objects.create(
-            entrega=entrega,
-            orden_de_compra=oc,
-            bien=bien,
-            cantidad=cantidad,
-            precio_unitario=precio_unitario,
-            precio_total=cantidad * precio_unitario
-        )
-
-        print(f"✅ Entrega creada (pedido {nro_pedido}) - Bien: {bien_nombre} - Cant: {cantidad}")
-
-    except Exception as e:
-        print(f"❌ Error en fila {idx+2}: {e}")
+        except Exception as e:
+            print(f"❌ Error en fila {idx+2}: {e}")
 
 print("🎉 Carga de remitos finalizada.")
