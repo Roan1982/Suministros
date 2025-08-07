@@ -7,6 +7,7 @@ urlpatterns = [
     path('remitos/', views.remitos_list, name='remitos_list'),
     path('rubros/', views.rubros_list, name='rubros_list'),
     path('agregar_rubro/', views.agregar_rubro, name='agregar_rubro'),
+    path('rubros/<int:pk>/editar/', views.editar_rubro, name='editar_rubro'),
     path('bienes/', views.bienes_list, name='bienes_list'),
     path('agregar_bien/', views.agregar_bien, name='agregar_bien'),
     path('agregar_orden/', views.agregar_orden, name='agregar_orden'),

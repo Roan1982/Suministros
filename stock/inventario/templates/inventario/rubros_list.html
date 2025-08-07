@@ -17,15 +17,21 @@
       <thead>
         <tr>
           <th>Nombre</th>
+          <th width="150">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for rubro in rubros %}
         <tr>
           <td>{{ rubro.nombre }}</td>
+          <td>
+            <a href="{% url 'editar_rubro' rubro.pk %}" class="btn btn-sm btn-primary" title="Editar">
+              <i class="fa-solid fa-edit"></i> Editar
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="1" class="text-center">No hay rubros registrados.</td></tr>
+        <tr><td colspan="2" class="text-center">No hay rubros registrados.</td></tr>
         {% endfor %}
       </tbody>
     </table>

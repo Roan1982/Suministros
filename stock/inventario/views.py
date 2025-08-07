@@ -959,8 +959,12 @@ class RubroForm(forms.ModelForm):
         fields = ['nombre']
 
     def clean_nombre(self):
-        nombre = self.cleaned_data['nombre'].strip()
-        if Rubro.objects.filter(nombre__iexact=nombre).exists():
+        nombre = self.cleaned_data['nombre'].strip().upper()
+        # Excluir la instancia actual al verificar duplicados (para ediciones)
+        qs = Rubro.objects.filter(nombre__iexact=nombre)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
             raise forms.ValidationError('Ya existe un rubro con ese nombre.')
         return nombre
 
@@ -1075,6 +1079,19 @@ def agregar_rubro(request):
     else:
         form = RubroForm()
     return render(request, 'inventario/agregar_rubro.html', {'form': form, 'titulo': 'Agregar Rubro'})
+
+@login_required
+def editar_rubro(request, pk):
+    rubro = get_object_or_404(Rubro, pk=pk)
+    if request.method == 'POST':
+        form = RubroForm(request.POST, instance=rubro)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Rubro actualizado correctamente.')
+            return redirect('rubros_list')
+    else:
+        form = RubroForm(instance=rubro)
+    return render(request, 'inventario/agregar_rubro.html', {'form': form, 'titulo': 'Editar Rubro', 'editando': True, 'rubro': rubro})
 
 @login_required
 def agregar_bien(request):

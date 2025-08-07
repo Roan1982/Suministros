@@ -6,7 +6,7 @@
     <div class="card shadow-lg border-0 mb-4 animate__animated animate__fadeIn">
       <div class="card-body p-5">
         <h2 class="mb-4 fw-bold text-primary">
-          <i class="fa-solid fa-layer-group me-2"></i>Agregar Rubro
+          <i class="fa-solid fa-layer-group me-2"></i>{{ titulo }}
         </h2>
         <form method="post" autocomplete="off">
           {% csrf_token %}
@@ -25,8 +25,8 @@
             <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow">
               <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
             </button>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
-              <i class="fa-solid fa-arrow-left me-2"></i>Volver al panel
+            <a href="{% if editando %}{% url 'rubros_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
+              <i class="fa-solid fa-arrow-left me-2"></i>{% if editando %}Volver a rubros{% else %}Volver al panel{% endif %}
             </a>
           </div>
         </form>
