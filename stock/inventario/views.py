@@ -993,8 +993,13 @@ class BienForm(forms.ModelForm):
     def clean_nombre(self):
         nombre = self.cleaned_data['nombre'].strip()
         rubro = self.cleaned_data.get('rubro')
-        if rubro and Bien.objects.filter(nombre__iexact=nombre, rubro=rubro).exists():
-            raise forms.ValidationError('Ya existe un bien con ese nombre en este rubro.')
+        if rubro:
+            # Excluir la instancia actual al verificar duplicados (para ediciones)
+            qs = Bien.objects.filter(nombre__iexact=nombre, rubro=rubro)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError('Ya existe un bien con ese nombre en este rubro.')
         return nombre
 
 
@@ -1104,6 +1109,19 @@ def agregar_bien(request):
     else:
         form = BienForm()
     return render(request, 'inventario/agregar_bien.html', {'form': form, 'titulo': 'Agregar Bien'})
+
+@login_required
+def editar_bien(request, pk):
+    bien = get_object_or_404(Bien, pk=pk)
+    if request.method == 'POST':
+        form = BienForm(request.POST, instance=bien)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Bien actualizado correctamente.')
+            return redirect('bienes_list')
+    else:
+        form = BienForm(instance=bien)
+    return render(request, 'inventario/agregar_bien.html', {'form': form, 'titulo': 'Editar Bien', 'editando': True, 'bien': bien})
 
 
 

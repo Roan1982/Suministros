@@ -29,6 +29,7 @@
           <th>Nombre</th>
           <th>Rubro</th>
           <th>Stock</th>
+          <th width="150">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -37,9 +38,14 @@
           <td>{{ bien.nombre }}</td>
           <td>{{ bien.rubro }}</td>
           <td>{{ bien.stock|default:0 }}</td>
+          <td>
+            <a href="{% url 'editar_bien' bien.pk %}" class="btn btn-sm btn-primary" title="Editar">
+              <i class="fa-solid fa-edit"></i> Editar
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="3" class="text-center">No hay bienes registrados.</td></tr>
+        <tr><td colspan="4" class="text-center">No hay bienes registrados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
