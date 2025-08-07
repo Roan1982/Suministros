@@ -891,15 +891,19 @@ def orden_detalle(request, pk):
 def orden_editar(request, pk):
     orden = get_object_or_404(OrdenDeCompra, pk=pk)
     OrdenItemFormSet = inlineformset_factory(OrdenDeCompra, OrdenDeCompraItem, form=OrdenDeCompraItemForm, extra=0, can_delete=True)
+    import sys
     if request.method == 'POST':
         form = OrdenDeCompraForm(request.POST, instance=orden)
-        formset = OrdenItemFormSet(request.POST, instance=orden)
-        print('POST data:', request.POST)
-        print('Form valido:', form.is_valid())
-        print('Formset valido:', formset.is_valid())
-        print('Form errors:', form.errors)
-        print('Formset errors:', formset.errors)
-        print('Formset non_form_errors:', formset.non_form_errors())
+        formset = OrdenItemFormSet(request.POST, instance=orden, prefix='items')
+        print("=== DEBUG ORDEN EDITAR ===", file=sys.stderr)
+        print("POST data:", dict(request.POST), file=sys.stderr)
+        print("form.fecha_inicio value:", form['fecha_inicio'].value(), file=sys.stderr)
+        print("form initial:", form.initial, file=sys.stderr)
+        if not form.is_valid():
+            print("Form errors:", form.errors, file=sys.stderr)
+        if not formset.is_valid():
+            print("Formset errors:", formset.errors, file=sys.stderr)
+            print("Formset non_form_errors:", formset.non_form_errors(), file=sys.stderr)
         if form.is_valid() and formset.is_valid():
             orden = form.save()
             items = formset.save(commit=False)
@@ -911,8 +915,17 @@ def orden_editar(request, pk):
             return redirect('orden_detalle', pk=orden.id)
     else:
         form = OrdenDeCompraForm(instance=orden)
-        formset = OrdenItemFormSet(instance=orden)
-    return render(request, 'inventario/orden_editar.html', {'form': form, 'formset': formset, 'orden': orden})
+        formset = OrdenItemFormSet(instance=orden, prefix='items')
+        print("=== DEBUG ORDEN EDITAR GET ===", file=sys.stderr)
+        print("form.fecha_inicio initial:", form.initial.get('fecha_inicio'), file=sys.stderr)
+        print("form.fecha_inicio value:", form['fecha_inicio'].value(), file=sys.stderr)
+    return render(request, 'inventario/orden_form.html', {
+        'form': form,
+        'formset': formset,
+        'orden': orden,
+        'titulo': f'Editar Orden de Compra #{orden.numero}',
+        'agregar_bien_url': 'agregar_bien',
+    })
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -940,11 +953,19 @@ from django import forms
 from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem
 
 class OrdenDeCompraItemForm(forms.ModelForm):
-    renglon = forms.IntegerField(label='Renglón', min_value=1)
+    renglon = forms.IntegerField(label='Renglón', min_value=1, widget=forms.NumberInput(attrs={'class': 'form-control'}))
 
     class Meta:
         model = OrdenDeCompraItem
         fields = ['renglon', 'bien', 'cantidad', 'precio_unitario']
+        widgets = {
+            'bien': forms.Select(attrs={
+                'class': 'form-control select2-bien-orden',
+                'data-placeholder': 'Seleccione un bien...'
+            }),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'precio_unitario': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+        }
 
 from django.contrib import messages
 from django.http import HttpResponse
@@ -1019,10 +1040,43 @@ class OrdenDeCompraForm(forms.ModelForm):
     class Meta:
         model = OrdenDeCompra
         fields = ['numero', 'fecha_inicio', 'fecha_fin', 'proveedor']
+        widgets = {
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'proveedor': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        import datetime
+        instance = kwargs.get('instance', None)
+        data = args[0] if args else None
+        initial = kwargs.get('initial', {}) or {}
+        # Si es edición y no hay data (GET), forzar initial como string yyyy-MM-dd
+        if instance and instance.pk and not data:
+            if instance.fecha_inicio:
+                initial['fecha_inicio'] = instance.fecha_inicio.strftime('%Y-%m-%d')
+            if instance.fecha_fin:
+                initial['fecha_fin'] = instance.fecha_fin.strftime('%Y-%m-%d')
+            kwargs['initial'] = initial
+        super().__init__(*args, **kwargs)
+        # Si initial viene en formato dd/mm/yyyy, convertir a yyyy-MM-dd
+        for field in ['fecha_inicio', 'fecha_fin']:
+            val = self.fields[field].initial
+            if isinstance(val, (datetime.date, datetime.datetime)):
+                self.fields[field].initial = val.strftime('%Y-%m-%d')
+            elif isinstance(val, str) and '/' in val:
+                try:
+                    d = datetime.datetime.strptime(val, '%d/%m/%Y')
+                    self.fields[field].initial = d.strftime('%Y-%m-%d')
+                except Exception:
+                    self.fields[field].initial = None
 
     def clean_numero(self):
         numero = self.cleaned_data['numero']
-        if OrdenDeCompra.objects.filter(numero=numero).exists():
+        # Excluir la instancia actual al verificar duplicados (para ediciones)
+        qs = OrdenDeCompra.objects.filter(numero=numero)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
             raise forms.ValidationError('Ya existe una orden de compra con ese número.')
         return numero
 

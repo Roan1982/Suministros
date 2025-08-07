@@ -12,6 +12,18 @@
           <i class="fa-solid fa-file-contract me-2"></i>{{ titulo }}
         </h2>
         <form method="post" autocomplete="off">
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+          {% if formset.non_form_errors %}
+            <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+          {% endif %}
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors|striptags }}</div>
+          {% endif %}
+          {% if formset.non_form_errors %}
+            <div class="alert alert-danger">{{ formset.non_form_errors|striptags }}</div>
+          {% endif %}
           {% csrf_token %}
           <div class="row g-4 mb-4">
             <div class="col-md-6 mb-3">
@@ -65,6 +77,7 @@
                 <tbody>
                   {% for form in formset.forms %}
                     <tr class="item-form-row">
+                      {{ form.id }} {# Campo oculto para el id del item, necesario para edición #}
                       {% for field in form.visible_fields %}
                         {% if field.name != 'DELETE' %}
                           <td style="min-width:120px;vertical-align:middle;">{{ field }}</td>
