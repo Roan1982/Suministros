@@ -1032,6 +1032,7 @@ class EntregaItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['precio_unitario'].required = False
         self.fields['precio_unitario'].widget = forms.HiddenInput()
 
 @login_required
@@ -1128,23 +1129,19 @@ def crear_entrega(request):
     if request.method == 'POST':
         print("=== DEBUG BACKEND ===")
         print("POST data:", dict(request.POST))
-        
         # Buscar el prefijo correcto
         for key in request.POST.keys():
             if 'TOTAL_FORMS' in key:
                 prefix = key.replace('-TOTAL_FORMS', '')
                 print(f"Prefijo detectado: '{prefix}'")
                 break
-        
         form = EntregaForm(request.POST)
         formset = EntregaItemFormSet(request.POST or None)
-        
         print("Form válido:", form.is_valid())
         print("Formset válido:", formset.is_valid())
         if not formset.is_valid():
             print("Errores del formset:", formset.errors)
             print("Errores no form del formset:", formset.non_form_errors())
-        
         if form.is_valid() and formset.is_valid():
             entrega = form.save()
             items = formset.save(commit=False)
@@ -1167,7 +1164,27 @@ def crear_entrega(request):
             formset.save_m2m()
             print("Items guardados exitosamente")
             messages.success(request, 'Entrega registrada y stock actualizado.')
-            return redirect(reverse('remito_print', args=[entrega.id]))
+            # AJAX support: if request is AJAX, return JSON with URLs
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.urls import reverse
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'remito_print_url': reverse('remito_print', args=[entrega.id]),
+                    'remitos_list_url': reverse('remitos_list'),
+                })
+            else:
+                return redirect(reverse('remito_print', args=[entrega.id]))
+        else:
+            # If AJAX, return JSON with errors
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                errors = {
+                    'form': form.errors,
+                    'formset': formset.errors,
+                    'non_form_errors': formset.non_form_errors(),
+                }
+                return JsonResponse({'success': False, 'errors': errors})
     else:
         form = EntregaForm()
         formset = EntregaItemFormSet()
