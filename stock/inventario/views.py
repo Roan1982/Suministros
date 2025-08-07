@@ -910,7 +910,8 @@ def orden_editar(request, pk):
             for item in items:
                 item.orden_de_compra = orden
                 item.save()
-            formset.save_m2m()
+            # Procesar eliminados y relaciones many-to-many
+            formset.save()  # Esto elimina los objetos marcados para borrar
             messages.success(request, 'Orden de compra actualizada correctamente.')
             return redirect('orden_detalle', pk=orden.id)
     else:

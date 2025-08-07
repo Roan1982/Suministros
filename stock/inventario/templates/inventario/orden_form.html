@@ -87,7 +87,7 @@
                         <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
                           <i class="fa-solid fa-trash"></i>
                         </button>
-                        {{ form.DELETE.as_hidden }}
+                        <span style="display:none;">{{ form.DELETE }}</span>
                       </td>
                     </tr>
                   {% endfor %}
@@ -105,8 +105,8 @@
             <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow">
               <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
             </button>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
-              <i class="fa-solid fa-arrow-left me-2"></i>Volver al panel
+                <a href="{% url 'ordenes' %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
+              <i class="fa-solid fa-arrow-left me-2"></i>Volver al listado
             </a>
           </div>
         </form>
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
   table.addEventListener('click', function(e) {
     if (e.target.closest('.delete-row')) {
       const row = e.target.closest('tr');
-      // Si hay un input DELETE oculto, marcarlo y ocultar la fila
+      // Buscar el input checkbox DELETE y marcarlo, luego ocultar la fila
       const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if (deleteInput) {
         deleteInput.checked = true;
