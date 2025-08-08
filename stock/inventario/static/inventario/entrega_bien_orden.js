@@ -56,33 +56,80 @@ function actualizarOrdenesDeCompra(row) {
             window.jQuery(ordenSelect).trigger('change.select2');
           }
           console.log('[DEBUG] Opciones agregadas al select:', ordenSelect.innerHTML);
-          // Si hay una opción seleccionada, mostrar stock y precio
+          // Si hay una opción ya seleccionada, mostrar stock y precio
           if (ordenSelect.value) {
-            const selectedOption = ordenSelect.options[ordenSelect.selectedIndex];
-            const stockCell = row.querySelector('.stock-cell');
-            const precioCell = row.querySelector('.precio-unitario-cell');
-            if (selectedOption && stockCell) {
-              const disponible = selectedOption.getAttribute('data-disponible');
-              stockCell.textContent = disponible !== null ? disponible : '-';
-            }
-            if (selectedOption && precioCell) {
-              const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
-              precioCell.textContent = (precioUnitario !== null && precioUnitario !== undefined) ? precioUnitario : '-';
-            }
+            console.log('[DEBUG] Hay una opción preseleccionada:', ordenSelect.value);
+            mostrarStockYPrecio();
           }
-          // Si solo hay una opción válida, seleccionarla automáticamente y mostrar stock/precio (sin disparar evento)
+          // Si solo hay una opción válida, seleccionarla automáticamente y mostrar stock/precio
           if (ordenSelect.options.length === 2) { // placeholder + una opción
+            console.log('[DEBUG] Solo una orden disponible, seleccionando automáticamente');
+            const valorOrden = ordenSelect.options[1].value;
             ordenSelect.selectedIndex = 1;
-            const selectedOption = ordenSelect.options[1];
-            const stockCell = row.querySelector('.stock-cell');
-            const precioCell = row.querySelector('.precio-unitario-cell');
-            if (selectedOption && stockCell) {
-              const disponible = selectedOption.getAttribute('data-disponible');
-              stockCell.textContent = disponible !== null ? disponible : '-';
-            }
-            if (selectedOption && precioCell) {
-              const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
-              precioCell.textContent = (precioUnitario !== null && precioUnitario !== undefined) ? precioUnitario : '-';
+            
+            // Actualizar select2 si está habilitado
+            if (window.jQuery && window.jQuery.fn.select2) {
+              window.jQuery(ordenSelect).val(valorOrden).trigger('change.select2');
+              // Usar setTimeout para asegurar que select2 se haya actualizado
+              setTimeout(function() {
+                // Llamar directamente a mostrar stock y precio
+                const selectedOption = ordenSelect.options[ordenSelect.selectedIndex];
+                const stockCell = row.querySelector('.stock-cell');
+                const precioCell = row.querySelector('.precio-unitario-cell');
+                const precioInput = row.querySelector('input[name$="-precio_unitario"]');
+                
+                if (selectedOption) {
+                  const disponible = selectedOption.getAttribute('data-disponible');
+                  const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
+                  
+                  if (stockCell) {
+                    stockCell.textContent = disponible !== null && disponible !== undefined ? disponible : '-';
+                  }
+                  
+                  if (precioCell) {
+                    if (precioUnitario !== null && precioUnitario !== undefined && precioUnitario !== '') {
+                      precioCell.textContent = precioUnitario;
+                      if (precioInput) {
+                        precioInput.value = precioUnitario;
+                      }
+                    } else {
+                      precioCell.textContent = '-';
+                      if (precioInput) {
+                        precioInput.value = '';
+                      }
+                    }
+                  }
+                }
+              }, 100);
+            } else {
+              // Si no hay select2, llamar directamente
+              const selectedOption = ordenSelect.options[ordenSelect.selectedIndex];
+              const stockCell = row.querySelector('.stock-cell');
+              const precioCell = row.querySelector('.precio-unitario-cell');
+              const precioInput = row.querySelector('input[name$="-precio_unitario"]');
+              
+              if (selectedOption) {
+                const disponible = selectedOption.getAttribute('data-disponible');
+                const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
+                
+                if (stockCell) {
+                  stockCell.textContent = disponible !== null && disponible !== undefined ? disponible : '-';
+                }
+                
+                if (precioCell) {
+                  if (precioUnitario !== null && precioUnitario !== undefined && precioUnitario !== '') {
+                    precioCell.textContent = precioUnitario;
+                    if (precioInput) {
+                      precioInput.value = precioUnitario;
+                    }
+                  } else {
+                    precioCell.textContent = '-';
+                    if (precioInput) {
+                      precioInput.value = '';
+                    }
+                  }
+                }
+              }
             }
           }
         } else {
@@ -124,10 +171,69 @@ function inicializarFilaEntregaBienOrden(row) {
   aplicarSelect2(row);
   const bienSelect = row.querySelector('.bien-select');
   const ordenSelect = row.querySelector('.orden-select');
+  
+  // Definir la función mostrarStockYPrecio al inicio
+  function mostrarStockYPrecio() {
+    const selectedOption = ordenSelect.options[ordenSelect.selectedIndex];
+    const stockCell = row.querySelector('.stock-cell');
+    const precioCell = row.querySelector('.precio-unitario-cell');
+    const precioInput = row.querySelector('input[name$="-precio_unitario"]');
+    
+    console.log('[DEBUG] mostrarStockYPrecio - selectedOption:', selectedOption);
+    console.log('[DEBUG] selectedOption value:', selectedOption ? selectedOption.value : 'null');
+    
+    if (selectedOption && selectedOption.value) {
+      // Hay una orden seleccionada
+      const disponible = selectedOption.getAttribute('data-disponible');
+      const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
+      
+      console.log('[DEBUG] disponible:', disponible);
+      console.log('[DEBUG] precioUnitario:', precioUnitario);
+      
+      // Actualizar stock
+      if (stockCell) {
+        stockCell.textContent = disponible !== null && disponible !== undefined ? disponible : '-';
+      }
+      
+      // Actualizar precio
+      if (precioCell) {
+        if (precioUnitario !== null && precioUnitario !== undefined && precioUnitario !== '') {
+          precioCell.textContent = precioUnitario;
+          // También actualizar el campo hidden
+          if (precioInput) {
+            precioInput.value = precioUnitario;
+          }
+        } else {
+          precioCell.textContent = '-';
+          if (precioInput) {
+            precioInput.value = '';
+          }
+        }
+      }
+    } else {
+      // No hay orden seleccionada - limpiar valores
+      if (stockCell) {
+        stockCell.textContent = '-';
+      }
+      if (precioCell) {
+        precioCell.textContent = '-';
+      }
+      if (precioInput) {
+        precioInput.value = '';
+      }
+    }
+  }
   if (bienSelect) {
     bienSelect.addEventListener('change', function() {
+      console.log('[DEBUG] Bien select changed to:', bienSelect.value);
       actualizarOrdenesDeCompra(row);
-      if (ordenSelect) ordenSelect.value = '';
+      if (ordenSelect) {
+        ordenSelect.value = '';
+        if (window.jQuery && window.jQuery.fn.select2) {
+          window.jQuery(ordenSelect).val('').trigger('change.select2');
+        }
+      }
+      // Limpiar stock y precio
       const stockCell = row.querySelector('.stock-cell');
       const precioCell = row.querySelector('.precio-unitario-cell');
       const precioInput = row.querySelector('input[name$="-precio_unitario"]');
@@ -135,10 +241,31 @@ function inicializarFilaEntregaBienOrden(row) {
       if (precioCell) precioCell.textContent = '-';
       if (precioInput) precioInput.value = '';
     });
+    
     if (window.jQuery && window.jQuery.fn.select2) {
       window.jQuery(bienSelect).on('select2:select', function(e) {
+        console.log('[DEBUG] Bien select2:select event, value:', bienSelect.value);
         actualizarOrdenesDeCompra(row);
-        if (ordenSelect) ordenSelect.value = '';
+        if (ordenSelect) {
+          ordenSelect.value = '';
+          window.jQuery(ordenSelect).val('').trigger('change.select2');
+        }
+        // Limpiar stock y precio
+        const stockCell = row.querySelector('.stock-cell');
+        const precioCell = row.querySelector('.precio-unitario-cell');
+        const precioInput = row.querySelector('input[name$="-precio_unitario"]');
+        if (stockCell) stockCell.textContent = '-';
+        if (precioCell) precioCell.textContent = '-';
+        if (precioInput) precioInput.value = '';
+      });
+      
+      window.jQuery(bienSelect).on('select2:clear', function(e) {
+        console.log('[DEBUG] Bien select2:clear event');
+        if (ordenSelect) {
+          ordenSelect.innerHTML = '<option value="">---------</option>';
+          window.jQuery(ordenSelect).val('').trigger('change.select2');
+        }
+        // Limpiar stock y precio
         const stockCell = row.querySelector('.stock-cell');
         const precioCell = row.querySelector('.precio-unitario-cell');
         const precioInput = row.querySelector('input[name$="-precio_unitario"]');
@@ -152,42 +279,22 @@ function inicializarFilaEntregaBienOrden(row) {
     }
   }
   if (ordenSelect) {
-    function mostrarStockYPrecio() {
-      const selectedOption = ordenSelect.options[ordenSelect.selectedIndex];
-      const stockCell = row.querySelector('.stock-cell');
-      const precioCell = row.querySelector('.precio-unitario-cell');
-      const precioInput = row.querySelector('input[name$="-precio_unitario"]');
-      
-      if (selectedOption && stockCell) {
-        const disponible = selectedOption.getAttribute('data-disponible');
-        if (disponible !== null) {
-          stockCell.textContent = disponible;
-        } else {
-          stockCell.textContent = '-';
-        }
-      }
-      if (selectedOption && precioCell) {
-        const precioUnitario = selectedOption.getAttribute('data-precio-unitario');
-        if (precioUnitario !== null && precioUnitario !== undefined) {
-          precioCell.textContent = precioUnitario;
-          // También actualizar el campo hidden
-          if (precioInput) {
-            precioInput.value = precioUnitario;
-          }
-        } else {
-          precioCell.textContent = '-';
-          if (precioInput) {
-            precioInput.value = '';
-          }
-        }
-      }
-    }
     ordenSelect.addEventListener('change', function() {
+      console.log('[DEBUG] Orden select changed to:', ordenSelect.value);
       mostrarStockYPrecio();
     });
-    ordenSelect.addEventListener('select2:select', function() {
-      mostrarStockYPrecio();
-    });
+    
+    // Para Select2
+    if (window.jQuery && window.jQuery.fn.select2) {
+      window.jQuery(ordenSelect).on('select2:select', function() {
+        console.log('[DEBUG] Select2 select event, value:', ordenSelect.value);
+        mostrarStockYPrecio();
+      });
+      window.jQuery(ordenSelect).on('select2:clear', function() {
+        console.log('[DEBUG] Select2 clear event');
+        mostrarStockYPrecio();
+      });
+    }
     if (ordenSelect.value) {
       mostrarStockYPrecio();
     }
