@@ -114,6 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       const formData = new FormData(form);
+      
+      // Mostrar indicador de carga
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalText = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Procesando...';
+      
       fetch(window.location.href, {
         method: 'POST',
         headers: {
@@ -127,23 +134,108 @@ document.addEventListener('DOMContentLoaded', function() {
           window.open(data.remito_print_url, '_blank');
           window.location.href = data.remitos_list_url;
         } else {
-          let msg = {% if entrega %}'Error al actualizar el remito.'{% else %}'Error al crear el remito.'{% endif %};
-          if (data.errors) {
-            msg += '\n' + JSON.stringify(data.errors, null, 2);
+          // Restaurar botón
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalText;
+          
+          // Mostrar errores de forma más amigable
+          let mensajesError = [];
+          
+          if (data.errors && data.errors.formset) {
+            // Extraer errores específicos de los ítems
+            data.errors.formset.forEach((formErrors, index) => {
+              if (formErrors && typeof formErrors === 'object') {
+                Object.keys(formErrors).forEach(campo => {
+                  const errores = formErrors[campo];
+                  if (Array.isArray(errores)) {
+                    errores.forEach(error => {
+                      mensajesError.push(`Ítem ${index + 1}: ${error}`);
+                    });
+                  }
+                });
+              }
+            });
           }
-          alert(msg);
+          
+          if (data.errors && data.errors.non_form_errors) {
+            data.errors.non_form_errors.forEach(error => {
+              mensajesError.push(error);
+            });
+          }
+          
+          if (data.errors && data.errors.form) {
+            Object.keys(data.errors.form).forEach(campo => {
+              const errores = data.errors.form[campo];
+              if (Array.isArray(errores)) {
+                errores.forEach(error => {
+                  mensajesError.push(`${campo}: ${error}`);
+                });
+              }
+            });
+          }
+          
+          if (mensajesError.length > 0) {
+            // Crear un modal de error más amigable
+            const modalHtml = `
+              <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                      <h5 class="modal-title">
+                        <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                        Error al guardar el remito
+                      </h5>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p class="mb-3">Por favor, corrija los siguientes errores antes de continuar:</p>
+                      <ul class="list-unstyled">
+                        ${mensajesError.map(msg => `<li class="mb-2"><i class="fa-solid fa-circle-exclamation text-danger me-2"></i>${msg}</li>`).join('')}
+                      </ul>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            // Remover modal anterior si existe
+            const existingModal = document.getElementById('errorModal');
+            if (existingModal) {
+              existingModal.remove();
+            }
+            
+            // Agregar modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+            modal.show();
+            
+            // Limpiar modal después de cerrarlo
+            document.getElementById('errorModal').addEventListener('hidden.bs.modal', function() {
+              this.remove();
+            });
+          } else {
+            alert('Error al {% if entrega %}actualizar{% else %}crear{% endif %} el remito. Por favor, revise los datos ingresados.');
+          }
         }
       })
       .catch(err => {
-        alert({% if entrega %}'Error al actualizar el remito.'{% else %}'Error al crear el remito.'{% endif %});
+        // Restaurar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        alert('Error de conexión al {% if entrega %}actualizar{% else %}crear{% endif %} el remito. Por favor, inténtelo nuevamente.');
       });
     });
   }
 });
 </script>
-            <a href="{% if entrega %}{% url 'remitos_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
+            <a href="{% if entrega %}{% url 'remitos_list' %}{% else %}{% url 'remitos_list' %}{% endif %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
               <i class="fa-solid fa-arrow-left me-2"></i>
-              {% if entrega %}Volver a Remitos{% else %}Volver al panel{% endif %}
+              {% if entrega %}Volver a Remitos{% else %}Volver a Remitos{% endif %}
             </a>
           </div>
         </form>
@@ -186,7 +278,7 @@ function debugFormset() {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="/static/inventario/mayusculas.js"></script>
 <script src="/static/inventario/orden_api.js"></script>
-<script src="/static/inventario/entrega_bien_orden.js"></script>
+<script src="/static/inventario/entrega_bien_orden.js?v=11"></script>
 <script src="/static/inventario/formset_dynamic.js"></script>
 <script src="/static/inventario/select2_bien_orden.js"></script>
 <script>

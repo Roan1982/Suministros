@@ -3,11 +3,7 @@
 function actualizarStockBienOrden(row) {
     const bienSelect = row.querySelector('.bien-select');
     const ordenSelect = row.querySelector('.orden-select');
-    const stockCell = row.quer        // Actualizar bienes disponibles
-        setTimeout(() => {
-          console.log('[DEBUG VERSION 5] Select2 orden clear, restaurando opciones...');
-          restaurarOpcionesBienes();
-        }, 100);ctor('.stock-cell');
+    const stockCell = row.querySelector('.stock-cell');
     if (!bienSelect || !ordenSelect || !stockCell) return;
     const bienId = bienSelect.value;
     const ordenId = ordenSelect.value;
@@ -32,7 +28,7 @@ function actualizarOrdenesDeCompra(row) {
     const ordenSelect = row.querySelector('.orden-select');
     if (!bienSelect || !ordenSelect) return;
     const bienId = bienSelect.value;
-    console.log('[DEBUG V6] bienId seleccionado:', bienId);
+    console.log('[DEBUG] bienId seleccionado:', bienId);
     ordenSelect.innerHTML = '<option value="">---------</option>';
     if (!bienId) {
       if (window.jQuery && window.jQuery.fn.select2) {
@@ -40,32 +36,12 @@ function actualizarOrdenesDeCompra(row) {
       }
       return;
     }
-    
     fetch(`/api/ordenes_con_stock_bien/${bienId}/`)
       .then(resp => resp.json())
       .then(data => {
-        console.log('[DEBUG V6] Respuesta de /api/ordenes_con_stock_bien/', bienId, data);
+        console.log('[DEBUG] Respuesta de /api/ordenes_con_stock_bien/', bienId, data);
         if (data.ordenes && data.ordenes.length > 0) {
-          // Obtener combinaciones que agotan stock para filtrar órdenes
-          const combinacionesAgotadas = validarCombinacionesDuplicadas();
-          console.log('[DEBUG V6] Combinaciones agotadas para filtrar:', Array.from(combinacionesAgotadas));
-          
-          const ordenesDisponibles = data.ordenes.filter(orden => {
-            const combinacionKey = `${bienId}-${orden.id}`;
-            const estaAgotada = combinacionesAgotadas.has(combinacionKey);
-            
-            // Solo incluir si la orden NO está agotada O si es la fila actual que ya tiene esa combinación seleccionada
-            const ordenActual = row.querySelector('.orden-select').value;
-            const esFilaActual = ordenActual === orden.id.toString();
-            
-            const incluir = !estaAgotada || esFilaActual;
-            console.log('[DEBUG V6] Orden', orden.numero, '- Agotada:', estaAgotada, '- Es fila actual:', esFilaActual, '- Incluir:', incluir);
-            return incluir;
-          });
-          
-          console.log('[DEBUG V6] Órdenes disponibles después del filtro:', ordenesDisponibles.length, 'de', data.ordenes.length);
-          
-          ordenesDisponibles.forEach(function(orden) {
+          data.ordenes.forEach(function(orden) {
             const opt = document.createElement('option');
             opt.value = orden.id;
             opt.textContent = `${orden.numero}`;
@@ -79,15 +55,15 @@ function actualizarOrdenesDeCompra(row) {
           if (window.jQuery && window.jQuery.fn.select2) {
             window.jQuery(ordenSelect).trigger('change.select2');
           }
-          console.log('[DEBUG V6] Opciones agregadas al select:', ordenSelect.innerHTML);
+          console.log('[DEBUG] Opciones agregadas al select:', ordenSelect.innerHTML);
           // Si hay una opción ya seleccionada, mostrar stock y precio
           if (ordenSelect.value) {
-            console.log('[DEBUG V6] Hay una opción preseleccionada:', ordenSelect.value);
+            console.log('[DEBUG] Hay una opción preseleccionada:', ordenSelect.value);
             mostrarStockYPrecio();
           }
           // Si solo hay una opción válida, seleccionarla automáticamente y mostrar stock/precio
           if (ordenSelect.options.length === 2) { // placeholder + una opción
-            console.log('[DEBUG V6] Solo una orden disponible, seleccionando automáticamente');
+            console.log('[DEBUG] Solo una orden disponible, seleccionando automáticamente');
             const valorOrden = ordenSelect.options[1].value;
             ordenSelect.selectedIndex = 1;
             
@@ -160,14 +136,14 @@ function actualizarOrdenesDeCompra(row) {
           if (window.jQuery && window.jQuery.fn.select2) {
             window.jQuery(ordenSelect).trigger('change.select2');
           }
-          console.warn('[DEBUG V6] No se encontraron órdenes disponibles después del filtro para el bien:', bienId);
+          console.warn('[DEBUG] No se encontraron órdenes con stock para el bien:', bienId);
         }
       })
       .catch(err => {
         if (window.jQuery && window.jQuery.fn.select2) {
           window.jQuery(ordenSelect).trigger('change.select2');
         }
-        console.error('[DEBUG V6] Error al consultar /api/ordenes_con_stock_bien/', bienId, err);
+        console.error('[DEBUG] Error al consultar /api/ordenes_con_stock_bien/', bienId, err);
       });
   }
 
@@ -296,7 +272,7 @@ function inicializarFilaEntregaBienOrden(row) {
     }
     
     // Actualizar bienes disponibles cuando cambie la cantidad
-    console.log('[DEBUG VERSION 5] *** CANTIDAD CAMBIÓ - EJECUTANDO LÓGICA ***');
+    console.log('[DEBUG VERSION 2] *** CANTIDAD CAMBIÓ - EJECUTANDO LÓGICA ***');
     setTimeout(() => {
       restaurarOpcionesBienes();
       ocultarBienesSinStock();
@@ -323,7 +299,7 @@ function inicializarFilaEntregaBienOrden(row) {
       
       // Actualizar bienes disponibles
       setTimeout(() => {
-        console.log('[DEBUG VERSION 5] Bien cambió, ocultando bienes sin stock...');
+        console.log('[DEBUG] Bien cambió, ocultando bienes sin stock...');
         restaurarOpcionesBienes();
         ocultarBienesSinStock();
       }, 100);
@@ -331,8 +307,7 @@ function inicializarFilaEntregaBienOrden(row) {
     
     if (window.jQuery && window.jQuery.fn.select2) {
       window.jQuery(bienSelect).on('select2:select', function(e) {
-        console.log('[DEBUG VERSION 5] Bien select2:select event, value:', bienSelect.value);
-        
+        console.log('[DEBUG] Bien select2:select event, value:', bienSelect.value);
         actualizarOrdenesDeCompra(row);
         if (ordenSelect) {
           ordenSelect.value = '';
@@ -348,7 +323,7 @@ function inicializarFilaEntregaBienOrden(row) {
         
         // Actualizar bienes disponibles
         setTimeout(() => {
-          console.log('[DEBUG VERSION 5] Select2 bien select, ocultando bienes sin stock...');
+          console.log('[DEBUG] Select2 bien select, ocultando bienes sin stock...');
           restaurarOpcionesBienes();
           ocultarBienesSinStock();
         }, 100);
@@ -370,7 +345,7 @@ function inicializarFilaEntregaBienOrden(row) {
         
         // Actualizar bienes disponibles
         setTimeout(() => {
-          console.log('[DEBUG VERSION 5] Select2 bien clear, restaurando opciones...');
+          console.log('[DEBUG] Select2 bien clear, restaurando opciones...');
           restaurarOpcionesBienes();
         }, 100);
       });
@@ -385,7 +360,7 @@ function inicializarFilaEntregaBienOrden(row) {
       mostrarStockYPrecio();
       // Actualizar bienes disponibles
       setTimeout(() => {
-        console.log('[DEBUG VERSION 5] Orden cambió, ocultando bienes sin stock...');
+        console.log('[DEBUG] Orden cambió, ocultando bienes sin stock...');
         restaurarOpcionesBienes();
         ocultarBienesSinStock();
       }, 100);
@@ -398,7 +373,7 @@ function inicializarFilaEntregaBienOrden(row) {
         mostrarStockYPrecio();
         // Actualizar bienes disponibles
         setTimeout(() => {
-          console.log('[DEBUG VERSION 5] Select2 orden select, ocultando bienes sin stock...');
+          console.log('[DEBUG] Select2 orden select, ocultando bienes sin stock...');
           restaurarOpcionesBienes();
           ocultarBienesSinStock();
         }, 100);
@@ -487,83 +462,77 @@ function validarCombinacionesDuplicadas() {
   return combinacionesQueAgotanStock;
 }
 
-// Función optimizada para manejar bienes sin stock - VERSION 5 - GLOBAL
-async function ocultarBienesSinStock() {
-  console.log('[DEBUG VERSION 5] *** EJECUTANDO ocultarBienesSinStock (OPTIMIZADA) ***');
+// Función simplificada para manejar bienes sin stock - VERSION 2 - GLOBAL
+function ocultarBienesSinStock() {
+  console.log('[DEBUG VERSION 2] *** EJECUTANDO ocultarBienesSinStock ***');
   
-  const filas = document.querySelectorAll('#items-table-body tr.form-row');
-  console.log('[DEBUG VERSION 5] Procesando', filas.length, 'filas para ocultar bienes sin stock');
-  
-  // Solo procesar si hay filas vacías
-  const filasVacias = Array.from(filas).filter(fila => {
-    const valorActualCantidad = fila.querySelector('input[name$="-cantidad"]')?.value;
-    const esFilaVacia = !valorActualCantidad || valorActualCantidad === '' || parseInt(valorActualCantidad) === 0;
-    return esFilaVacia;
-  });
-  
-  console.log('[DEBUG VERSION 5] Filas vacías encontradas:', filasVacias.length);
-  
-  if (filasVacias.length === 0) {
-    console.log('[DEBUG VERSION 5] No hay filas vacías, saltando verificación');
-    return;
-  }
-  
-  // Obtener combinaciones que agotan stock usando la función existente
   const combinacionesAgotadas = validarCombinacionesDuplicadas();
-  console.log('[DEBUG VERSION 5] Combinaciones agotadas:', Array.from(combinacionesAgotadas));
+  
+  console.log('[DEBUG VERSION 2] Combinaciones agotadas recibidas:', Array.from(combinacionesAgotadas));
   
   if (combinacionesAgotadas.size === 0) {
-    console.log('[DEBUG VERSION 5] No hay combinaciones que agoten stock, saliendo...');
+    console.log('[DEBUG VERSION 2] No hay combinaciones que agoten stock, saliendo...');
     return;
   }
   
-  // Obtener bienes que están completamente agotados
-  const bienesAgotados = new Set();
-  combinacionesAgotadas.forEach(combinacion => {
-    const [bienId, ordenId] = combinacion.split('-');
-    bienesAgotados.add(bienId);
-  });
+  const filas = document.querySelectorAll('#items-table-body tr.form-row');
+  console.log('[DEBUG VERSION 2] Procesando', filas.length, 'filas para ocultar bienes');
   
-  console.log('[DEBUG VERSION 5] Bienes agotados:', Array.from(bienesAgotados));
-  
-  // Solo ocultar bienes en filas vacías
-  filasVacias.forEach((fila, filaIndex) => {
+  filas.forEach((fila, filaIndex) => {
     const bienSelect = fila.querySelector('select[name$="-bien"]');
     if (!bienSelect) return;
+    
+    const valorActualBien = bienSelect.value;
+    const valorActualOrden = fila.querySelector('select[name$="-orden_de_compra"]')?.value;
+    const miCombinacion = `${valorActualBien}-${valorActualOrden}`;
+    
+    console.log('[DEBUG VERSION 2] Fila', filaIndex, '- Mi combinación actual:', miCombinacion);
     
     let opcionesOcultadas = 0;
     
     // Para cada opción en el select de bien
-    Array.from(bienSelect.options).forEach(option => {
+    Array.from(bienSelect.options).forEach((option, optIndex) => {
       if (!option.value) return; // Saltar opción vacía
       
       const bienId = option.value;
       
-      // Ocultar si el bien está agotado
-      if (bienesAgotados.has(bienId)) {
+      // Verificar si este bien tiene alguna combinación que agote el stock
+      let debeOcultar = false;
+      
+      combinacionesAgotadas.forEach(combinacionAgotada => {
+        const [bienIdAgotado, ordenIdAgotada] = combinacionAgotada.split('-');
+        
+        // Si este bien tiene stock agotado en alguna orden, y no es MI combinación actual
+        if (bienIdAgotado === bienId && combinacionAgotada !== miCombinacion) {
+          debeOcultar = true;
+          console.log('[DEBUG VERSION 2] Debe ocultar bien', bienId, 'porque combinación', combinacionAgotada, 'está agotada (no es mi combinación', miCombinacion, ')');
+        }
+      });
+      
+      if (debeOcultar) {
         option.style.display = 'none';
         opcionesOcultadas++;
-        console.log('[DEBUG VERSION 5] *** OCULTANDO bien agotado:', option.text);
+        console.log('[DEBUG VERSION 2] *** OCULTANDO opción:', option.text);
       } else {
         option.style.display = '';
       }
     });
     
-    console.log('[DEBUG VERSION 5] Fila vacía', filaIndex, '- Opciones ocultadas:', opcionesOcultadas);
+    console.log('[DEBUG VERSION 2] Fila', filaIndex, '- Opciones ocultadas:', opcionesOcultadas);
     
     // Actualizar Select2 si está presente
     if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(bienSelect).hasClass('select2-hidden-accessible')) {
-      console.log('[DEBUG VERSION 5] Actualizando Select2 para fila', filaIndex);
+      console.log('[DEBUG VERSION 2] Actualizando Select2 para fila', filaIndex);
       window.jQuery(bienSelect).trigger('change.select2');
     }
   });
   
-  console.log('[DEBUG VERSION 5] *** FIN ocultarBienesSinStock OPTIMIZADA ***');
+  console.log('[DEBUG VERSION 2] *** FIN ocultarBienesSinStock ***');
 }
 
-// Función para restaurar todas las opciones de bienes - VERSION 5 - GLOBAL
+// Función para restaurar todas las opciones de bienes - GLOBAL
 function restaurarOpcionesBienes() {
-  console.log('[DEBUG VERSION 5] *** EJECUTANDO restaurarOpcionesBienes ***');
+  console.log('[DEBUG VERSION 2] *** EJECUTANDO restaurarOpcionesBienes ***');
   const filas = document.querySelectorAll('#items-table-body tr.form-row');
   
   filas.forEach((fila) => {
@@ -580,7 +549,7 @@ function restaurarOpcionesBienes() {
       window.jQuery(bienSelect).trigger('change.select2');
     }
   });
-  console.log('[DEBUG VERSION 5] *** FIN restaurarOpcionesBienes ***');
+  console.log('[DEBUG VERSION 2] *** FIN restaurarOpcionesBienes ***');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -602,105 +571,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Actualizar bienes disponibles al cargar la página
   setTimeout(() => {
-    console.log('[DEBUG VERSION 5] Página cargada, ocultando bienes sin stock...');
+    console.log('[DEBUG] Página cargada, ocultando bienes sin stock...');
     ocultarBienesSinStock();
   }, 500);
 
-  // Prevenir envío del formulario si hay ítems sin orden de compra
+  // Prevenir envío del formulario si hay duplicados (ya no necesario, pero mantenemos por seguridad)
   const formulario = document.querySelector('form');
   if (formulario) {
     formulario.addEventListener('submit', function(e) {
-      const filas = document.querySelectorAll('#items-table-body tr.form-row');
-      let erroresEncontrados = [];
-      
-      filas.forEach((fila, index) => {
-        const bienSelect = fila.querySelector('select[name$="-bien"]');
-        const ordenSelect = fila.querySelector('select[name$="-orden_de_compra"]');
-        const cantidadInput = fila.querySelector('input[name$="-cantidad"]');
-        
-        // Solo validar filas que tienen bien y cantidad
-        if (bienSelect?.value && cantidadInput?.value && parseInt(cantidadInput.value) > 0) {
-          if (!ordenSelect?.value) {
-            // Agregar indicación visual de error
-            ordenSelect.classList.add('is-invalid');
-            
-            // Agregar mensaje de error si no existe
-            let errorMsg = ordenSelect.parentNode.querySelector('.invalid-feedback');
-            if (!errorMsg) {
-              errorMsg = document.createElement('div');
-              errorMsg.className = 'invalid-feedback';
-              ordenSelect.parentNode.appendChild(errorMsg);
-            }
-            errorMsg.textContent = 'Debe seleccionar una orden de compra para este ítem';
-            
-            // Obtener nombre del bien para el mensaje
-            const bienNombre = bienSelect.options[bienSelect.selectedIndex]?.text || 'Ítem';
-            erroresEncontrados.push(`${bienNombre}: Debe seleccionar una orden de compra`);
-          } else {
-            // Remover error si existe
-            ordenSelect.classList.remove('is-invalid');
-            const errorMsg = ordenSelect.parentNode.querySelector('.invalid-feedback');
-            if (errorMsg) {
-              errorMsg.remove();
-            }
-          }
-        }
-      });
-      
-      if (erroresEncontrados.length > 0) {
-        e.preventDefault();
-        
-        // Mostrar modal de error amigable
-        const modalHtml = `
-          <div class="modal fade" id="validationErrorModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                  <h5 class="modal-title">
-                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
-                    Información incompleta
-                  </h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                  <p class="mb-3">Por favor, complete la siguiente información antes de guardar:</p>
-                  <ul class="list-unstyled">
-                    ${erroresEncontrados.map(error => `<li class="mb-2"><i class="fa-solid fa-circle-exclamation text-warning me-2"></i>${error}</li>`).join('')}
-                  </ul>
-                  <div class="alert alert-info mt-3">
-                    <i class="fa-solid fa-info-circle me-2"></i>
-                    <strong>Sugerencia:</strong> Cada ítem debe tener un bien seleccionado, una cantidad y una orden de compra asociada.
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // Remover modal anterior si existe
-        const existingModal = document.getElementById('validationErrorModal');
-        if (existingModal) {
-          existingModal.remove();
-        }
-        
-        // Agregar modal al body
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('validationErrorModal'));
-        modal.show();
-        
-        // Limpiar modal después de cerrarlo
-        document.getElementById('validationErrorModal').addEventListener('hidden.bs.modal', function() {
-          this.remove();
-        });
-        
-        return false;
-      }
-      
+      // Ya no validamos duplicados, solo permitimos el envío
       return true;
     });
   }
@@ -711,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
       inicializarFilaEntregaBienOrden(e.target);
       // Actualizar bienes disponibles cuando se agrega una nueva fila
       setTimeout(() => {
-        console.log('[DEBUG VERSION 5] Nueva fila agregada, ocultando bienes sin stock...');
+        console.log('[DEBUG] Nueva fila agregada, ocultando bienes sin stock...');
         ocultarBienesSinStock();
       }, 200);
     }

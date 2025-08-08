@@ -1155,7 +1155,7 @@ class EntregaItemForm(forms.ModelForm):
         self.fields['precio_unitario'].required = False
         self.fields['precio_unitario'].widget = forms.HiddenInput()
         
-        # Filtrar bienes que tienen stock disponible
+        # Filtrar bienes que tienen stock disponible (sin considerar uso en otras filas por ahora)
         bienes_con_stock = []
         for bien in Bien.objects.all():
             # Calcular stock total del bien
@@ -1302,85 +1302,101 @@ def crear_entrega(request):
         if not formset.is_valid():
             print("Errores del formset:", formset.errors)
             print("Errores no form del formset:", formset.non_form_errors())
+        
+        # Validaciones personalizadas adicionales
+        validation_errors = False
         if form.is_valid() and formset.is_valid():
-            # Validar stock antes de guardar
+            # Validar que todos los ítems tengan orden de compra y stock antes de guardar
             for item_form in formset.forms:
                 if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
                     orden_de_compra = item_form.cleaned_data.get('orden_de_compra')
                     bien = item_form.cleaned_data.get('bien')
                     cantidad = item_form.cleaned_data.get('cantidad', 0)
                     
-                    if orden_de_compra and bien and cantidad > 0:
-                        # Obtener stock disponible
-                        try:
-                            oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=orden_de_compra, bien=bien)
-                            # Calcular stock disponible (comprado - ya entregado)
-                            ya_entregado = EntregaItem.objects.filter(
-                                orden_de_compra=orden_de_compra, 
-                                bien=bien
-                            ).aggregate(total=Sum('cantidad'))['total'] or 0
-                            
-                            stock_disponible = oc_item.cantidad - ya_entregado
-                            
-                            if cantidad > stock_disponible:
-                                # Agregar error al formulario
-                                item_form.add_error('cantidad', 
-                                    f'La cantidad ({cantidad}) excede el stock disponible ({stock_disponible}) para {bien.nombre}')
-                                break
-                        except OrdenDeCompraItem.DoesNotExist:
+                    # Validar que todos los ítems tengan orden de compra
+                    if bien and cantidad > 0:
+                        if not orden_de_compra:
                             item_form.add_error('orden_de_compra', 
-                                f'No se encontró la orden de compra para {bien.nombre}')
-                            break
+                                f'{bien.nombre} no tiene Stock o no se seleccionó una orden de compra.')
+                                
+                            validation_errors = True
+                            print(f"Error de validación: Falta orden de compra para {bien.nombre}")
+                        else:
+                            # Si hay orden de compra, validar stock
+                            # Obtener stock disponible
+                            try:
+                                oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=orden_de_compra, bien=bien)
+                                # Calcular stock disponible (comprado - ya entregado)
+                                ya_entregado = EntregaItem.objects.filter(
+                                    orden_de_compra=orden_de_compra, 
+                                    bien=bien
+                                ).aggregate(total=Sum('cantidad'))['total'] or 0
+                                
+                                stock_disponible = oc_item.cantidad - ya_entregado
+                                
+                                if cantidad > stock_disponible:
+                                    # Agregar error al formulario
+                                    item_form.add_error('cantidad', 
+                                        f'La cantidad ({cantidad}) excede el stock disponible ({stock_disponible}) para {bien.nombre}')
+                                    validation_errors = True
+                                    print(f"Error de validación: Cantidad excede stock para {bien.nombre}")
+                            except OrdenDeCompraItem.DoesNotExist:
+                                item_form.add_error('orden_de_compra', 
+                                    f'No se encontró la orden de compra para {bien.nombre}')
+                                validation_errors = True
+                                print(f"Error de validación: Orden de compra no encontrada para {bien.nombre}")
             
-            # Revisar si hay errores después de la validación
-            if not any(item_form.errors for item_form in formset.forms):
-                entrega = form.save()
-                items = formset.save(commit=False)
-                print("Items a guardar:", len(items))
-                for i, item in enumerate(items):
-                    print(f"Item {i}: bien={item.bien}, cantidad={item.cantidad}, orden={item.orden_de_compra}")
-                    item.entrega = entrega
-                    # Obtener el precio_unitario de la orden de compra seleccionada para cada item
-                    if item.orden_de_compra:
-                        try:
-                            oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=item.orden_de_compra, bien=item.bien)
-                            item.precio_unitario = oc_item.precio_unitario
-                            print(f"Precio encontrado para item {i}: {item.precio_unitario}")
-                        except OrdenDeCompraItem.DoesNotExist:
-                            item.precio_unitario = 0
-                            print(f"Precio no encontrado para item {i}, usando 0")
-                    else:
-                        # Si no hay orden de compra, usar precio 0 o el precio que ya viene del formulario
-                        if item.precio_unitario is None:
-                            item.precio_unitario = 0
-                        print(f"Sin orden de compra para item {i}, usando precio {item.precio_unitario}")
-                    item.precio_total = item.cantidad * item.precio_unitario
-                    item.save()
-                    print(f"Item {i} guardado con precio_total: {item.precio_total}")
-                formset.save_m2m()
-                print("Items guardados exitosamente")
-                messages.success(request, 'Entrega registrada y stock actualizado.')
-                # AJAX support: if request is AJAX, return JSON with URLs
-                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    from django.urls import reverse
-                    from django.http import JsonResponse
-                    return JsonResponse({
-                        'success': True,
-                        'remito_print_url': reverse('remito_print', args=[entrega.id]),
-                        'remitos_list_url': reverse('remitos_list'),
-                    })
+            print("Errores de validación encontrados:", validation_errors)
+        
+        if form.is_valid() and formset.is_valid() and not validation_errors:
+            entrega = form.save()
+            items = formset.save(commit=False)
+            print("Items a guardar:", len(items))
+            for i, item in enumerate(items):
+                print(f"Item {i}: bien={item.bien}, cantidad={item.cantidad}, orden={item.orden_de_compra}")
+                item.entrega = entrega
+                # Obtener el precio_unitario de la orden de compra seleccionada para cada item
+                if item.orden_de_compra:
+                    try:
+                        oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=item.orden_de_compra, bien=item.bien)
+                        item.precio_unitario = oc_item.precio_unitario
+                        print(f"Precio encontrado para item {i}: {item.precio_unitario}")
+                    except OrdenDeCompraItem.DoesNotExist:
+                        item.precio_unitario = 0
+                        print(f"Precio no encontrado para item {i}, usando 0")
                 else:
-                    return redirect(reverse('remito_print', args=[entrega.id]))
+                    # Si no hay orden de compra, usar precio 0 o el precio que ya viene del formulario
+                    if item.precio_unitario is None:
+                        item.precio_unitario = 0
+                    print(f"Sin orden de compra para item {i}, usando precio {item.precio_unitario}")
+                item.precio_total = item.cantidad * item.precio_unitario
+                item.save()
+                print(f"Item {i} guardado con precio_total: {item.precio_total}")
+            formset.save_m2m()
+            print("Items guardados exitosamente")
+            messages.success(request, 'Entrega registrada y stock actualizado.')
+            # AJAX support: if request is AJAX, return JSON with URLs
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.urls import reverse
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'remito_print_url': reverse('remito_print', args=[entrega.id]),
+                    'remitos_list_url': reverse('remitos_list'),
+                })
             else:
-                # If AJAX, return JSON with errors
-                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    from django.http import JsonResponse
-                    errors = {
-                        'form': form.errors,
-                        'formset': formset.errors,
-                        'non_form_errors': formset.non_form_errors(),
-                    }
-                    return JsonResponse({'success': False, 'errors': errors})
+                return redirect(reverse('remito_print', args=[entrega.id]))
+        else:
+            # Si hay errores de validación o el formulario es inválido
+            print("No se puede guardar: errores de validación encontrados")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                errors = {
+                    'form': form.errors,
+                    'formset': formset.errors,
+                    'non_form_errors': formset.non_form_errors(),
+                }
+                return JsonResponse({'success': False, 'errors': errors})
     else:
         form = EntregaForm()
         formset = EntregaItemFormSet()
@@ -1407,40 +1423,53 @@ def editar_entrega(request, pk):
             print("Errores del formset:", formset.errors)
             print("Errores no form del formset:", formset.non_form_errors())
         
+        # Validaciones personalizadas adicionales para edición
+        validation_errors = False
         if form.is_valid() and formset.is_valid():
-            # Validar stock antes de guardar (para ediciones)
+            # Validar que todos los ítems tengan orden de compra y stock antes de guardar (para ediciones)
             for item_form in formset.forms:
                 if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
                     orden_de_compra = item_form.cleaned_data.get('orden_de_compra')
                     bien = item_form.cleaned_data.get('bien')
                     cantidad = item_form.cleaned_data.get('cantidad', 0)
                     
-                    if orden_de_compra and bien and cantidad > 0:
-                        # Obtener stock disponible
-                        try:
-                            oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=orden_de_compra, bien=bien)
-                            # Calcular stock disponible (comprado - ya entregado, excluyendo este item si existe)
-                            ya_entregado = EntregaItem.objects.filter(
-                                orden_de_compra=orden_de_compra, 
-                                bien=bien
-                            ).exclude(
-                                pk=item_form.instance.pk if item_form.instance.pk else None
-                            ).aggregate(total=Sum('cantidad'))['total'] or 0
-                            
-                            stock_disponible = oc_item.cantidad - ya_entregado
-                            
-                            if cantidad > stock_disponible:
-                                # Agregar error al formulario
-                                item_form.add_error('cantidad', 
-                                    f'La cantidad ({cantidad}) excede el stock disponible ({stock_disponible}) para {bien.nombre}')
-                                break
-                        except OrdenDeCompraItem.DoesNotExist:
+                    # Validar que todos los ítems tengan orden de compra
+                    if bien and cantidad > 0:
+                        if not orden_de_compra:
                             item_form.add_error('orden_de_compra', 
-                                f'No se encontró la orden de compra para {bien.nombre}')
-                            break
+                                f'Debe seleccionar una orden de compra para {bien.nombre} o {bien.nombre} no tiene Stock')
+                            validation_errors = True
+                            print(f"Error de validación (editar): Falta orden de compra para {bien.nombre}")
+                        else:
+                            # Si hay orden de compra, validar stock
+                            # Obtener stock disponible
+                            try:
+                                oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=orden_de_compra, bien=bien)
+                                # Calcular stock disponible (comprado - ya entregado, excluyendo este item si existe)
+                                ya_entregado = EntregaItem.objects.filter(
+                                    orden_de_compra=orden_de_compra, 
+                                    bien=bien
+                                ).exclude(
+                                    pk=item_form.instance.pk if item_form.instance.pk else None
+                                ).aggregate(total=Sum('cantidad'))['total'] or 0
+                                
+                                stock_disponible = oc_item.cantidad - ya_entregado
+                                
+                                if cantidad > stock_disponible:
+                                    # Agregar error al formulario
+                                    item_form.add_error('cantidad', 
+                                        f'La cantidad ({cantidad}) excede el stock disponible ({stock_disponible}) para {bien.nombre}')
+                                    validation_errors = True
+                                    print(f"Error de validación (editar): Cantidad excede stock para {bien.nombre}")
+                            except OrdenDeCompraItem.DoesNotExist:
+                                item_form.add_error('orden_de_compra', 
+                                    f'No se encontró la orden de compra para {bien.nombre}')
+                                validation_errors = True
+                                print(f"Error de validación (editar): Orden de compra no encontrada para {bien.nombre}")
             
-            # Revisar si hay errores después de la validación
-            if not any(item_form.errors for item_form in formset.forms):
+            print("Errores de validación encontrados (editar):", validation_errors)
+        
+        if form.is_valid() and formset.is_valid() and not validation_errors:
                 entrega = form.save()
                 items = formset.save(commit=False)
                 
@@ -1487,16 +1516,17 @@ def editar_entrega(request, pk):
                     })
                 else:
                     return redirect(reverse('remito_print', args=[entrega.id]))
-            else:
-                # If AJAX, return JSON with errors
-                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    from django.http import JsonResponse
-                    errors = {
-                        'form': form.errors,
-                        'formset': formset.errors,
-                        'non_form_errors': formset.non_form_errors(),
-                    }
-                    return JsonResponse({'success': False, 'errors': errors})
+        else:
+            # Si hay errores de validación o el formulario es inválido (editar)
+            print("No se puede actualizar: errores de validación encontrados")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                errors = {
+                    'form': form.errors,
+                    'formset': formset.errors,
+                    'non_form_errors': formset.non_form_errors(),
+                }
+                return JsonResponse({'success': False, 'errors': errors})
     else:
         form = EntregaForm(instance=entrega)
         formset = EntregaItemFormSet(instance=entrega)
