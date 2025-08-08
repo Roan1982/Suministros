@@ -1342,6 +1342,95 @@ def crear_entrega(request):
     return render(request, 'inventario/entrega_form.html', {'form': form, 'formset': formset})
 
 @login_required
+def editar_entrega(request, pk):
+    entrega = get_object_or_404(Entrega, pk=pk)
+    EntregaItemFormSet = forms.inlineformset_factory(
+        Entrega, EntregaItem, form=EntregaItemForm, extra=0, can_delete=True
+    )
+    
+    if request.method == 'POST':
+        print("=== DEBUG EDITAR ENTREGA ===")
+        print("POST data:", dict(request.POST))
+        
+        form = EntregaForm(request.POST, instance=entrega)
+        formset = EntregaItemFormSet(request.POST, instance=entrega)
+        
+        print("Form válido:", form.is_valid())
+        print("Formset válido:", formset.is_valid())
+        
+        if not formset.is_valid():
+            print("Errores del formset:", formset.errors)
+            print("Errores no form del formset:", formset.non_form_errors())
+        
+        if form.is_valid() and formset.is_valid():
+            entrega = form.save()
+            items = formset.save(commit=False)
+            
+            # Eliminar items marcados para borrar
+            for obj in formset.deleted_objects:
+                obj.delete()
+            
+            print("Items a guardar/actualizar:", len(items))
+            for i, item in enumerate(items):
+                print(f"Item {i}: bien={item.bien}, cantidad={item.cantidad}, orden={item.orden_de_compra}")
+                item.entrega = entrega
+                
+                # Obtener el precio_unitario de la orden de compra seleccionada para cada item
+                if item.orden_de_compra:
+                    try:
+                        oc_item = OrdenDeCompraItem.objects.get(orden_de_compra=item.orden_de_compra, bien=item.bien)
+                        item.precio_unitario = oc_item.precio_unitario
+                        print(f"Precio encontrado para item {i}: {item.precio_unitario}")
+                    except OrdenDeCompraItem.DoesNotExist:
+                        item.precio_unitario = 0
+                        print(f"Precio no encontrado para item {i}, usando 0")
+                else:
+                    # Si no hay orden de compra, usar precio 0 o el precio que ya viene del formulario
+                    if item.precio_unitario is None:
+                        item.precio_unitario = 0
+                    print(f"Sin orden de compra para item {i}, usando precio {item.precio_unitario}")
+                
+                item.precio_total = item.cantidad * item.precio_unitario
+                item.save()
+                print(f"Item {i} guardado con precio_total: {item.precio_total}")
+            
+            formset.save_m2m()
+            print("Items actualizados exitosamente")
+            messages.success(request, 'Remito actualizado correctamente.')
+            
+            # AJAX support: if request is AJAX, return JSON with URLs
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.urls import reverse
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'remito_print_url': reverse('remito_print', args=[entrega.id]),
+                    'remitos_list_url': reverse('remitos_list'),
+                })
+            else:
+                return redirect(reverse('remito_print', args=[entrega.id]))
+        else:
+            # If AJAX, return JSON with errors
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                errors = {
+                    'form': form.errors,
+                    'formset': formset.errors,
+                    'non_form_errors': formset.non_form_errors(),
+                }
+                return JsonResponse({'success': False, 'errors': errors})
+    else:
+        form = EntregaForm(instance=entrega)
+        formset = EntregaItemFormSet(instance=entrega)
+    
+    return render(request, 'inventario/entrega_form.html', {
+        'form': form, 
+        'formset': formset,
+        'entrega': entrega,  # Para saber que estamos editando
+        'titulo': f'Editar Remito #{entrega.id}'
+    })
+
+@login_required
 def remito_pdf(request, pk):
     entrega = get_object_or_404(Entrega, pk=pk)
     template = get_template('inventario/remito_pdf.html')

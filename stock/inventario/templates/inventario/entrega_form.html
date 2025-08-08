@@ -10,7 +10,8 @@
     <div class="card shadow-lg border-0 mb-4 animate__animated animate__fadeIn">
       <div class="card-body p-5">
         <h2 class="mb-4 fw-bold text-primary">
-          <i class="fa-solid fa-file-signature me-2"></i>Registrar Entrega / Remito
+          <i class="fa-solid fa-file-signature me-2"></i>
+          {% if entrega %}{{ titulo|default:"Editar Remito" }}{% else %}Registrar Entrega / Remito{% endif %}
         </h2>
         <form method="post" autocomplete="off" id="entrega-form">
           {% csrf_token %}
@@ -102,7 +103,8 @@
           </div>
           <div class="d-flex justify-content-between align-items-center mt-4">
             <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow">
-              <i class="fa-solid fa-floppy-disk me-2"></i>Guardar Entrega
+              <i class="fa-solid fa-floppy-disk me-2"></i>
+              {% if entrega %}Actualizar Remito{% else %}Guardar Entrega{% endif %}
             </button>
 <script>
 // AJAX submit for remito creation UX
@@ -125,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
           window.open(data.remito_print_url, '_blank');
           window.location.href = data.remitos_list_url;
         } else {
-          let msg = 'Error al crear el remito.';
+          let msg = {% if entrega %}'Error al actualizar el remito.'{% else %}'Error al crear el remito.'{% endif %};
           if (data.errors) {
             msg += '\n' + JSON.stringify(data.errors, null, 2);
           }
@@ -133,14 +135,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       })
       .catch(err => {
-        alert('Error al crear el remito.');
+        alert({% if entrega %}'Error al actualizar el remito.'{% else %}'Error al crear el remito.'{% endif %});
       });
     });
   }
 });
 </script>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
-              <i class="fa-solid fa-arrow-left me-2"></i>Volver al panel
+            <a href="{% if entrega %}{% url 'remitos_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-lg px-4 fw-bold shadow-sm d-flex align-items-center">
+              <i class="fa-solid fa-arrow-left me-2"></i>
+              {% if entrega %}Volver a Remitos{% else %}Volver al panel{% endif %}
             </a>
           </div>
         </form>

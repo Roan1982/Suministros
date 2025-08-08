@@ -23,6 +23,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='inventario/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/login/?logout=1'), name='logout'),
     path('entrega/nueva/', views.crear_entrega, name='crear_entrega'),
+    path('entrega/<int:pk>/editar/', views.editar_entrega, name='editar_entrega'),
     path('remito/<int:pk>/pdf/', views.remito_pdf, name='remito_pdf'),
     path('remito/<int:pk>/imprimir/', views.remito_print, name='remito_print'),
     path('api/orden_bienes/<int:orden_id>/', views.api_orden_bienes, name='api_orden_bienes'),
