@@ -193,6 +193,8 @@ function inicializarFilaEntregaBienOrden(row) {
       // Actualizar stock
       if (stockCell) {
         stockCell.textContent = disponible !== null && disponible !== undefined ? disponible : '-';
+        // Validar cantidad después de actualizar stock
+        setTimeout(validarCantidad, 10);
       }
       
       // Actualizar precio
@@ -223,6 +225,53 @@ function inicializarFilaEntregaBienOrden(row) {
       }
     }
   }
+  
+  // Función para validar cantidad vs stock disponible
+  function validarCantidad() {
+    const cantidadInput = row.querySelector('input[name$="-cantidad"]');
+    const stockCell = row.querySelector('.stock-cell');
+    
+    if (cantidadInput && stockCell) {
+      const cantidad = parseInt(cantidadInput.value) || 0;
+      const stockText = stockCell.textContent;
+      const stockDisponible = parseInt(stockText) || 0;
+      
+      // Solo validar si hay stock disponible (no es '-')
+      if (stockText !== '-' && stockDisponible > 0) {
+        if (cantidad > stockDisponible) {
+          cantidadInput.setCustomValidity(`La cantidad no puede ser mayor al stock disponible (${stockDisponible})`);
+          cantidadInput.classList.add('is-invalid');
+          
+          // Mostrar mensaje de error
+          let errorMsg = cantidadInput.parentNode.querySelector('.invalid-feedback');
+          if (!errorMsg) {
+            errorMsg = document.createElement('div');
+            errorMsg.className = 'invalid-feedback';
+            cantidadInput.parentNode.appendChild(errorMsg);
+          }
+          errorMsg.textContent = `Stock disponible: ${stockDisponible}`;
+        } else {
+          cantidadInput.setCustomValidity('');
+          cantidadInput.classList.remove('is-invalid');
+          
+          // Remover mensaje de error
+          const errorMsg = cantidadInput.parentNode.querySelector('.invalid-feedback');
+          if (errorMsg) {
+            errorMsg.remove();
+          }
+        }
+      } else {
+        // Si no hay stock información, limpiar validación
+        cantidadInput.setCustomValidity('');
+        cantidadInput.classList.remove('is-invalid');
+        const errorMsg = cantidadInput.parentNode.querySelector('.invalid-feedback');
+        if (errorMsg) {
+          errorMsg.remove();
+        }
+      }
+    }
+  }
+  
   if (bienSelect) {
     bienSelect.addEventListener('change', function() {
       console.log('[DEBUG] Bien select changed to:', bienSelect.value);
@@ -299,6 +348,13 @@ function inicializarFilaEntregaBienOrden(row) {
       mostrarStockYPrecio();
     }
   }
+  
+  // Agregar validación de cantidad
+  const cantidadInput = row.querySelector('input[name$="-cantidad"]');
+  if (cantidadInput) {
+    cantidadInput.addEventListener('input', validarCantidad);
+    cantidadInput.addEventListener('change', validarCantidad);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -307,6 +363,15 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('[DEBUG] Filas form-row encontradas:', filas.length);
   filas.forEach(function(row) {
     inicializarFilaEntregaBienOrden(row);
+    // Agregar validación adicional para filas existentes que ya tienen datos
+    const cantidadInput = row.querySelector('input[name$="-cantidad"]');
+    if (cantidadInput && cantidadInput.value) {
+      // Disparar validación después de un breve delay para asegurar que el stock se haya cargado
+      setTimeout(() => {
+        const event = new Event('input', { bubbles: true });
+        cantidadInput.dispatchEvent(event);
+      }, 500);
+    }
   });
 
   // Para nuevas filas agregadas dinámicamente
