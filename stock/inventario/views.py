@@ -1154,6 +1154,20 @@ class EntregaItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['precio_unitario'].required = False
         self.fields['precio_unitario'].widget = forms.HiddenInput()
+        
+        # Filtrar bienes que tienen stock disponible
+        bienes_con_stock = []
+        for bien in Bien.objects.all():
+            # Calcular stock total del bien
+            comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            entregado = EntregaItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            stock_disponible = comprado - entregado
+            
+            if stock_disponible > 0:
+                bienes_con_stock.append(bien.id)
+        
+        # Aplicar el filtro al queryset del campo bien
+        self.fields['bien'].queryset = Bien.objects.filter(id__in=bienes_con_stock)
 
 @login_required
 def dashboard(request):
