@@ -4,37 +4,17 @@ console.log('Cargando formset_dynamic.js');
 
 // Enlaza eventos para actualizar el precio unitario dinámicamente
 function enlazarEventosFila(row) {
+    // La actualización de precio se maneja en entrega_bien_orden.js
+    // para evitar duplicar funcionalidad
+    
     const bienSelect = row.querySelector("select[name$='-bien']");
     const ordenSelect = row.querySelector("select[name$='-orden_de_compra']");
-    const precioSpan = row.querySelector('.precio-unitario-cell');
-    const precioInput = row.querySelector("input[name$='-precio_unitario']");
-
-    function actualizarPrecio() {
-        const bienId = bienSelect && bienSelect.value;
-        const ordenId = ordenSelect && ordenSelect.value;
-        if (bienId && ordenId) {
-            fetch(`/inventario/api/orden_precio/${ordenId}/${bienId}/`)
-                .then(resp => resp.json())
-                .then(data => {
-                    if (data.precio) {
-                        if (precioSpan) precioSpan.textContent = data.precio;
-                        if (precioInput) precioInput.value = data.precio;
-                    } else {
-                        if (precioSpan) precioSpan.textContent = '-';
-                        if (precioInput) precioInput.value = '';
-                    }
-                })
-                .catch(() => {
-                    if (precioSpan) precioSpan.textContent = '-';
-                    if (precioInput) precioInput.value = '';
-                });
-        } else {
-            if (precioSpan) precioSpan.textContent = '-';
-            if (precioInput) precioInput.value = '';
-        }
-    }
-    if (bienSelect) bienSelect.addEventListener('change', actualizarPrecio);
-    if (ordenSelect) ordenSelect.addEventListener('change', actualizarPrecio);
+    
+    // Solo agregamos los eventos si no están ya manejados por entrega_bien_orden.js
+    // Esta función se mantiene para compatibilidad futura
+    
+    // if (bienSelect) bienSelect.addEventListener('change', actualizarPrecio);
+    // if (ordenSelect) ordenSelect.addEventListener('change', actualizarPrecio);
 }
 
 // Script para que cada fila permita seleccionar OC y bien, y autocompletar precio
@@ -124,6 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 formsetTable.appendChild(newRow);
             }
             enlazarEventosFila(newRow);
+            if (window.actualizarFilaEntregaBienOrden) {
+                window.actualizarFilaEntregaBienOrden(newRow);
+            }
             if (window.jQuery) {
                 var $row = window.jQuery(newRow);
                 // Solo inicializar select2 en los nuevos selects
@@ -173,6 +156,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 formsetTable.appendChild(clonedRow);
             }
             enlazarEventosFila(clonedRow);
+            if (window.actualizarFilaEntregaBienOrden) {
+                window.actualizarFilaEntregaBienOrden(clonedRow);
+            }
             if (window.jQuery) {
                 var $row = window.jQuery(clonedRow);
                 $row.find("select[name$='-bien']").select2({

@@ -1,7 +1,35 @@
-from .models import Rubro, Bien
-# Vista para listar rubros
+
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Sum, F
+from django.http import JsonResponse, HttpResponse
+from django import forms
+from django.forms import inlineformset_factory
+from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem
+from django.contrib import messages
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from django.urls import reverse
+
+@login_required
+def api_orden_bien_stock(request, orden_id, bien_id):
+    try:
+        item = OrdenDeCompraItem.objects.get(orden_de_compra_id=orden_id, bien_id=bien_id)
+    except OrdenDeCompraItem.DoesNotExist:
+        return JsonResponse({'status': 'error', 'stock': 0})
+    entregado = EntregaItem.objects.filter(orden_de_compra_id=orden_id, bien_id=bien_id).aggregate(total=Sum('cantidad'))['total'] or 0
+    stock = item.cantidad - entregado
+    return JsonResponse({'status': 'ok', 'orden_id': orden_id, 'bien_id': bien_id, 'stock': stock})
+
+@login_required
+def api_stock_bien(request, bien_id):
+    try:
+        bien = Bien.objects.get(pk=bien_id)
+    except Bien.DoesNotExist:
+        return JsonResponse({'status': 'error', 'stock': 0})
+    comprado = OrdenDeCompraItem.objects.filter(bien_id=bien_id).aggregate(total=Sum('cantidad'))['total'] or 0
+    entregado = EntregaItem.objects.filter(bien_id=bien_id).aggregate(total=Sum('cantidad'))['total'] or 0
+    stock = comprado - entregado
+    return JsonResponse({'status': 'ok', 'bien_id': bien_id, 'stock': stock})
 @login_required
 def rubros_list(request):
     q = request.GET.get('q', '').strip()
@@ -16,8 +44,15 @@ def rubros_list(request):
 def bienes_list(request):
     q = request.GET.get('q', '').strip()
     rubro_id = request.GET.get('rubro')
-    from django.db.models import Sum
-    bienes = Bien.objects.select_related('rubro').annotate(stock=Sum('entregaitem__cantidad'))
+    from django.db.models import Sum, F
+    # Calcular stock: sum(cantidad comprada) - sum(cantidad entregada)
+    bienes = Bien.objects.select_related('rubro').all()
+    bienes = bienes.annotate(
+        comprado=Sum('ordendecompraitem__cantidad'),
+        entregado=Sum('entregaitem__cantidad'),
+    )
+    
+    bienes = bienes.annotate(stock=F('comprado') - F('entregado'))
     if q:
         bienes = bienes.filter(
             Q(nombre__icontains=q) |
@@ -52,8 +87,29 @@ from django.http import JsonResponse
 # API stub: ordenes con stock para un bien
 @login_required
 def api_ordenes_con_stock_bien(request, bien_id):
-    # TODO: Implementar lógica real
-    return JsonResponse({'status': 'ok', 'bien_id': bien_id, 'ordenes': []})
+    from .models import OrdenDeCompraItem, OrdenDeCompra, EntregaItem
+    from django.db.models import Sum, F
+    # Buscar todas las ordenes de compra que tengan ese bien y stock disponible
+    # Stock disponible = cantidad comprada - cantidad entregada
+    # Primero, obtener todas las ordenes de compra con ese bien
+    items = (
+        OrdenDeCompraItem.objects
+        .filter(bien_id=bien_id)
+        .select_related('orden_de_compra')
+    )
+    ordenes = []
+    for item in items:
+        # Calcular entregado para esa orden y bien
+        entregado = EntregaItem.objects.filter(orden_de_compra=item.orden_de_compra, bien_id=bien_id).aggregate(total=Sum('cantidad'))['total'] or 0
+        disponible = item.cantidad - entregado
+        if disponible > 0:
+            ordenes.append({
+                'id': item.orden_de_compra.id,
+                'numero': f"OC #{item.orden_de_compra.numero}",
+                'disponible': disponible,
+                'precio_unitario': str(item.precio_unitario),
+            })
+    return JsonResponse({'status': 'ok', 'bien_id': bien_id, 'ordenes': ordenes})
 from .models import Entrega, OrdenDeCompraItem
 # Vista para listar remitos con paginador
 from django.urls import reverse
@@ -1248,6 +1304,11 @@ def crear_entrega(request):
                     except OrdenDeCompraItem.DoesNotExist:
                         item.precio_unitario = 0
                         print(f"Precio no encontrado para item {i}, usando 0")
+                else:
+                    # Si no hay orden de compra, usar precio 0 o el precio que ya viene del formulario
+                    if item.precio_unitario is None:
+                        item.precio_unitario = 0
+                    print(f"Sin orden de compra para item {i}, usando precio {item.precio_unitario}")
                 item.precio_total = item.cantidad * item.precio_unitario
                 item.save()
                 print(f"Item {i} guardado con precio_total: {item.precio_total}")

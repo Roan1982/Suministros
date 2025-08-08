@@ -33,6 +33,7 @@
                   <tr>
                     <th>Bien</th>
                     <th>Orden de Compra</th>
+                    <th>Stock</th>
                     <th>Cantidad</th>
                     <th>Precio Unitario</th>
                     <th>Eliminar</th>
@@ -42,7 +43,10 @@
                   {% for f in formset %}
                   <tr class="form-row">
                     <td>{{ f.bien|add_class:'bien-select form-control' }}</td>
-                    <td>{{ f.orden_de_compra|add_class:'orden-select form-control' }}</td>
+                    <td>
+                      {{ f.orden_de_compra|add_class:'orden-select form-control' }}
+                    </td>
+                    <td><span class="stock-cell" data-bien="{{ f.bien.value }}" data-orden="">-</span></td>
                     <td>{{ f.cantidad }}</td>
                     <td>
                       <span class="precio-unitario-cell">
@@ -56,6 +60,7 @@
                       <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
                         <i class="fa-solid fa-trash"></i>
                       </button>
+                      <span class="d-none">{{ f.DELETE }}</span>
                     </td>
                   </tr>
                   {% endfor %}
@@ -63,18 +68,31 @@
                 </tbody>
                 <script type="text/template" id="empty-form-template">
                   <tr class="form-row">
-                    {# Orden correcto: bien, orden_de_compra, cantidad, precio_unitario #}
+                    {# Orden correcto: bien, orden_de_compra, stock, cantidad, precio_unitario #}
                     <td>{{ formset.empty_form.bien|add_class:'bien-select form-control' }}</td>
                     <td>{{ formset.empty_form.orden_de_compra|add_class:'orden-select form-control' }}</td>
+                    <td><span class="stock-cell" data-bien="" data-orden="">-</span></td>
                     <td>{{ formset.empty_form.cantidad }}</td>
                     <td><span class="precio-unitario-cell">-</span>{{ formset.empty_form.precio_unitario.as_hidden }}</td>
                     <td>
                       <button type="button" class="btn btn-outline-danger btn-sm delete-row" title="Eliminar">
                         <i class="fa-solid fa-trash"></i>
                       </button>
+                      <span class="d-none">{{ formset.empty_form.DELETE }}</span>
                     </td>
                   </tr>
                 </script>
+{#
+<script>
+// Mostrar el stock del bien en la orden seleccionada en cada fila
+// function actualizarStockBienOrden(row) {
+//   ...
+// }
+// document.addEventListener('DOMContentLoaded', function() {
+//   ...
+// });
+</script>
+#}
                 </tbody>
               </table>
             </div>
