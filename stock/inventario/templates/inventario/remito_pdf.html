@@ -78,6 +78,9 @@
                 <td><strong>Fecha:</strong> {{ entrega.fecha|date:"d/m/Y H:i" }}</td>
             </tr>
             <tr>
+                <td><strong>Destino:</strong> {{ entrega.area_persona }}</td>
+            </tr>
+            <tr>
                 <td colspan="2"><strong>Observaciones:</strong> {{ entrega.observaciones }}</td>
             </tr>
         </table>
@@ -108,8 +111,9 @@
         <span>Total Remito: ${{ entrega.total_entrega }}</span>
     </div>
     <div class="firma-final">
+        
         <p>.......................................................</p>
-        <p>Firma y aclaración</p>
+        <p>Firma y aclaración del receptor</p>
     </div>
 </body>
 </html>
