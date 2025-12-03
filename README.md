@@ -254,23 +254,5 @@ docker-compose restart web
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 👨‍💻 Autor
-
-**Roan1982** - *Desarrollo inicial*
-
-## 🙏 Agradecimientos
-
-- Django Framework
-- PostgreSQL
-- Docker Community
-- Bootstrap Framework
-- Font Awesome Icons
-
----
-
 **⭐ Si este proyecto te resulta útil, ¡dale una estrella en GitHub!**</content>
 <parameter name="filePath">c:\Users\angel.steklein\Documents\desarrollo\almacenes\stock\README.md
