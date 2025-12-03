@@ -62,8 +62,10 @@
                                 <th>Proveedor</th>
                                 <th>Frecuencia</th>
                                 <th>Costo Mensual</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Costo Total</th>
                                 <th>Estado</th>
-                                <th>Próxima Renovación</th>
                                 <th>Días para vencer</th>
                                 <th>Acciones</th>
                             </tr>
@@ -80,6 +82,21 @@
                                     <span class="badge badge-info">{{ servicio.get_frecuencia_display }}</span>
                                 </td>
                                 <td>${{ servicio.costo_mensual }}</td>
+                                <td>{{ servicio.fecha_inicio|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if servicio.fecha_fin %}
+                                        {{ servicio.fecha_fin|date:"d/m/Y" }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if servicio.calcular_costo_total %}
+                                        <strong>${{ servicio.calcular_costo_total|floatformat:2 }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if servicio.estado == 'ACTIVO' %}
                                         <span class="badge badge-success">Activo</span>
@@ -91,7 +108,6 @@
                                         <span class="badge badge-secondary">{{ servicio.get_estado_display }}</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ servicio.fecha_inicio|date:"d/m/Y" }}</td>
                                 <td>
                                     {% if servicio.dias_para_vencimiento %}
                                         {% if servicio.dias_para_vencimiento > 0 %}
@@ -116,7 +132,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="8" class="text-center text-muted">
+                                <td colspan="10" class="text-center text-muted">
                                     No se encontraron servicios.
                                 </td>
                             </tr>

@@ -149,6 +149,37 @@ class Servicio(models.Model):
             return (self.fecha_fin - date.today()).days
         return None
 
+    def calcular_costo_total(self):
+        """Calcula el costo total del servicio basado en la frecuencia y período"""
+        if not self.fecha_fin:
+            return None
+        
+        from dateutil.relativedelta import relativedelta
+        from datetime import date
+        
+        # Calcular la diferencia entre fechas
+        delta = relativedelta(self.fecha_fin, self.fecha_inicio)
+        dias_totales = (self.fecha_fin - self.fecha_inicio).days
+        
+        if self.frecuencia == 'MENSUAL':
+            # Número de meses completos
+            meses = delta.years * 12 + delta.months
+            if delta.days > 0:  # Si hay días adicionales, contar como un mes más
+                meses += 1
+            return self.costo_mensual * max(1, meses)
+        
+        elif self.frecuencia == 'QUINCENAL':
+            # Número de quincenas (15 días)
+            quincenas = dias_totales / 15
+            return self.costo_mensual * max(1, quincenas)
+        
+        elif self.frecuencia == 'SEMANAL':
+            # Número de semanas (7 días)
+            semanas = dias_totales / 7
+            return self.costo_mensual * max(1, semanas)
+        
+        return None
+
     def __str__(self):
         return f"{self.nombre} - {self.proveedor} ({self.get_frecuencia_display()})"
 
