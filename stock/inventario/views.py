@@ -1815,7 +1815,16 @@ def audit_log_list(request):
         logs = logs.filter(action=action)
 
     if user_id:
-        logs = logs.filter(user_id=user_id)
+        if user_id.lower() == 'none':
+            # Filtrar por usuarios nulos (acciones del sistema)
+            logs = logs.filter(user__isnull=True)
+        else:
+            try:
+                user_id_int = int(user_id)
+                logs = logs.filter(user_id=user_id_int)
+            except (ValueError, TypeError):
+                # Si no es un número válido, ignorar el filtro
+                pass
 
     if model_type:
         logs = logs.filter(content_type__model=model_type)

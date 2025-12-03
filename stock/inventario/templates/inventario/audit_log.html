@@ -28,6 +28,7 @@
         <label class="form-label fw-semibold">Usuario</label>
         <select name="user" class="form-select">
           <option value="">Todos</option>
+          <option value="None" {% if user_id == 'None' %}selected{% endif %}>Sistema</option>
           {% for user in users %}
             <option value="{{ user.user__id }}" {% if user_id == user.user__id|stringformat:'s' %}selected{% endif %}>
               {{ user.user__username }} ({{ user.user__first_name }} {{ user.user__last_name }})

@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
-from .models import AuditLog, Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem
+from .models import AuditLog, Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio
 from django.contrib.auth import get_user_model
 from .middleware.current_user import get_current_user
 import json
@@ -16,6 +16,7 @@ AUDITED_MODELS = [
     OrdenDeCompraItem,
     Entrega,
     EntregaItem,
+    Servicio,
 ]
 
 def get_changes(old_instance, new_instance):
