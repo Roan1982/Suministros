@@ -9,20 +9,22 @@
       <div class="col-md-6 mb-4">
         <div class="card shadow-sm h-100">
           <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Órdenes de Compra Próximas a Vencer</h5>
+            <h5 class="mb-0">Órdenes de Compra Próximas a Vencer y Vencidas</h5>
           </div>
           <div class="card-body p-0">
             <table class="table table-striped mb-0">
-              <thead class="table-primary"><tr><th>Número</th><th>Proveedor</th><th>Fecha Fin</th></tr></thead>
+              <thead class="table-primary"><tr><th>Número</th><th>Proveedor</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Días Restantes</th></tr></thead>
               <tbody>
-                {% for oc in ordenes_vencer %}
-                <tr>
-                  <td>{{ oc.numero }}</td>
-                  <td>{{ oc.proveedor }}</td>
-                  <td>{{ oc.fecha_fin|date:"d/m/Y" }}</td>
+                {% for item in ordenes_vencer %}
+                <tr{% if item.dias_restantes < 0 %} class="table-danger"{% endif %}>
+                  <td>{{ item.oc.numero }}</td>
+                  <td>{{ item.oc.proveedor }}</td>
+                  <td>{{ item.fecha_inicio|date:"d/m/Y" }}</td>
+                  <td>{{ item.oc.fecha_fin|date:"d/m/Y" }}</td>
+                  <td>{{ item.dias_restantes }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="3">No hay órdenes próximas a vencer.</td></tr>
+                <tr><td colspan="5">No hay órdenes próximas a vencer.</td></tr>
                 {% endfor %}
               </tbody>
             </table>

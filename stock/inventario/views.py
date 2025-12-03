@@ -1173,14 +1173,19 @@ class EntregaItemForm(forms.ModelForm):
 def dashboard(request):
     from django.db.models import Sum
     from datetime import date, timedelta
-    # Órdenes de compra próximas a vencer (fecha_fin dentro de los próximos 4 meses)
+    # Órdenes de compra próximas a vencer y vencidas (fecha_fin dentro de los próximos 4 meses o ya vencidas)
     hoy = date.today()
     cuatro_meses = hoy + timedelta(days=120)
     ordenes_vencer = []
     from .models import OrdenDeCompra
     for oc in OrdenDeCompra.objects.exclude(fecha_fin=None):
-        if hoy <= oc.fecha_fin <= cuatro_meses:
-            ordenes_vencer.append(oc)
+        if oc.fecha_fin <= cuatro_meses:
+            dias_restantes = (oc.fecha_fin - hoy).days
+            ordenes_vencer.append({
+                'oc': oc,
+                'fecha_inicio': oc.fecha_inicio,
+                'dias_restantes': dias_restantes
+            })
 
     # Productos bajos de stock (stock <= 10)
     bienes = Bien.objects.all()
