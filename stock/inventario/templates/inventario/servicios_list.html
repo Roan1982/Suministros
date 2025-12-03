@@ -79,7 +79,7 @@
                                 </td>
                                 <td>{{ servicio.proveedor }}</td>
                                 <td>
-                                    <span class="badge badge-info">{{ servicio.get_frecuencia_display }}</span>
+                                    <span class="badge badge-dark badge-lg">{{ servicio.get_frecuencia_display }}</span>
                                 </td>
                                 <td>${{ servicio.costo_mensual }}</td>
                                 <td>{{ servicio.fecha_inicio|date:"d/m/Y" }}</td>
@@ -99,13 +99,19 @@
                                 </td>
                                 <td>
                                     {% if servicio.estado == 'ACTIVO' %}
-                                        <span class="badge badge-success">Activo</span>
+                                        <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                            <i class="fas fa-check-circle"></i> Activo
+                                        </span>
                                     {% elif servicio.estado == 'POR_VENCER' %}
-                                        <span class="badge badge-warning">Por vencer</span>
+                                        <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                            <i class="fas fa-clock"></i> Por vencer
+                                        </span>
                                     {% elif servicio.estado == 'VENCIDO' %}
-                                        <span class="badge badge-danger">Vencido</span>
+                                        <span class="badge badge-danger-custom badge-lg font-weight-bold">
+                                            <i class="fas fa-times-circle"></i> Vencido
+                                        </span>
                                     {% else %}
-                                        <span class="badge badge-secondary">{{ servicio.get_estado_display }}</span>
+                                        <span class="badge badge-secondary-custom badge-lg font-weight-bold">{{ servicio.get_estado_display }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -177,4 +183,60 @@
         </div>
     </div>
 </div>
+
+<style>
+.badge-lg {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    font-weight: 600 !important;
+}
+
+.badge-dark {
+    background-color: #343a40 !important;
+    color: white !important;
+}
+
+.badge-secondary {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+.badge-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+/* Estados con colores personalizados más oscuros */
+.badge-success-custom {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge-warning-custom {
+    background-color: #fd7e14 !important; /* Naranja más oscuro */
+    color: white !important;
+}
+
+.badge-danger-custom {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.badge-secondary-custom {
+    background-color: #495057 !important; /* Gris más oscuro */
+    color: white !important;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+</style>
 {% endblock %}
