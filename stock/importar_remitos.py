@@ -10,7 +10,7 @@ django.setup()
 from inventario.models  import Entrega, EntregaItem, OrdenDeCompra, Bien, OrdenDeCompraItem  # Cambiar a tu app
 
 # Cargar Excel
-archivo = "stock/pedidos.xlsx"
+archivo = "pedidos.xlsx"
 df = pd.read_excel(archivo)
 
 
