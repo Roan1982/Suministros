@@ -255,4 +255,3 @@ docker-compose restart web
 5. Abre un Pull Request
 
 **⭐ Si este proyecto te resulta útil, ¡dale una estrella en GitHub!**</content>
-<parameter name="filePath">c:\Users\angel.steklein\Documents\desarrollo\almacenes\stock\README.md
