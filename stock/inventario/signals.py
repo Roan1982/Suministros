@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
 from .models import AuditLog, Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem
 from django.contrib.auth import get_user_model
+from .middleware.current_user import get_current_user
 import json
 
 User = get_user_model()
@@ -62,18 +63,10 @@ def audit_post_save(sender, instance, created, **kwargs):
         action = 'CREATE' if created else 'UPDATE'
         old_instance = getattr(instance, '_audit_old_instance', None)
 
-        # Obtener usuario actual (si está disponible en el contexto)
-        user = None
-        try:
-            from django.utils.deprecation import MiddlewareMixin
-            from django.contrib.auth.middleware import get_user
-            # Intentar obtener usuario del middleware
-            import threading
-            current_request = getattr(threading.current_thread(), 'request', None)
-            if current_request and hasattr(current_request, 'user'):
-                user = current_request.user if current_request.user.is_authenticated else None
-        except:
-            pass
+        # Obtener usuario actual usando el middleware
+        user = get_current_user()
+        if user and not user.is_authenticated:
+            user = None
 
         changes = None
         if not created and old_instance:
@@ -95,15 +88,10 @@ def audit_post_save(sender, instance, created, **kwargs):
 def audit_post_delete(sender, instance, **kwargs):
     """Registra eliminación"""
     if sender in AUDITED_MODELS:
-        # Obtener usuario actual
-        user = None
-        try:
-            import threading
-            current_request = getattr(threading.current_thread(), 'request', None)
-            if current_request and hasattr(current_request, 'user'):
-                user = current_request.user if current_request.user.is_authenticated else None
-        except:
-            pass
+        # Obtener usuario actual usando el middleware
+        user = get_current_user()
+        if user and not user.is_authenticated:
+            user = None
 
         content_type = ContentType.objects.get_for_model(instance)
         AuditLog.objects.create(
