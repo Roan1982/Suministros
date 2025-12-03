@@ -149,6 +149,23 @@ class Servicio(models.Model):
             return (self.fecha_fin - date.today()).days
         return None
 
+    @property
+    def estado_actual(self):
+        """Calcula el estado actual basado en la fecha de vencimiento"""
+        if self.estado == 'SUSPENDIDO':
+            return 'SUSPENDIDO'
+        
+        dias = self.dias_para_vencimiento()
+        if dias is None:
+            return 'ACTIVO'  # Si no hay fecha de fin, se considera activo
+        
+        if dias < 0:
+            return 'VENCIDO'
+        elif dias <= 60:
+            return 'POR_VENCER'
+        else:
+            return 'ACTIVO'
+
     def calcular_costo_total(self):
         """Calcula el costo total del servicio basado en la frecuencia y período"""
         if not self.fecha_fin:
