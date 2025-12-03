@@ -4,11 +4,32 @@ from django.db.models import Q, Sum, F
 from django.http import JsonResponse, HttpResponse
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem
+from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio
 from django.contrib import messages
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.urls import reverse
+
+def get_user_rubro(user):
+    """
+    Obtiene el rubro del usuario basado en sus grupos.
+    Si el usuario pertenece a un grupo de rubro, devuelve ese rubro.
+    Si pertenece a múltiples grupos, devuelve el primero.
+    Si no pertenece a ningún grupo de rubro, devuelve None.
+    """
+    if user.is_superuser or user.is_staff:
+        return None  # Los administradores ven todo
+    
+    rubro_groups = user.groups.filter(name__startswith='Rubro: ')
+    if rubro_groups.exists():
+        # Extraer el nombre del rubro del nombre del grupo
+        group_name = rubro_groups.first().name
+        rubro_name = group_name.replace('Rubro: ', '')
+        try:
+            return Rubro.objects.get(nombre=rubro_name)
+        except Rubro.DoesNotExist:
+            return None
+    return None
 
 @login_required
 def api_orden_bien_stock(request, orden_id, bien_id):
@@ -97,6 +118,12 @@ def api_ordenes_con_stock_bien(request, bien_id):
         .filter(bien_id=bien_id)
         .select_related('orden_de_compra')
     )
+    
+    # Filtrar por rubro del usuario si no es superusuario o staff
+    user_rubro = get_user_rubro(request.user)
+    if user_rubro:
+        items = items.filter(orden_de_compra__rubro=user_rubro)
+    
     ordenes = []
     for item in items:
         # Calcular entregado para esa orden y bien
@@ -913,12 +940,19 @@ from django.urls import reverse
 @login_required
 def ordenes_list(request):
     q = request.GET.get('q', '').strip()
-    ordenes_qs = OrdenDeCompra.objects.all()
+    ordenes_qs = OrdenDeCompra.objects.select_related('rubro').all()
     if q:
         ordenes_qs = ordenes_qs.filter(
             Q(numero__icontains=q) |
-            Q(proveedor__icontains=q)
+            Q(proveedor__icontains=q) |
+            Q(rubro__nombre__icontains=q)
         )
+    
+    # Filtrar por rubro del usuario si no es superusuario o staff
+    user_rubro = get_user_rubro(request.user)
+    if user_rubro:
+        ordenes_qs = ordenes_qs.filter(rubro=user_rubro)
+    
     ordenes_qs = ordenes_qs.order_by('-fecha_inicio')
     paginator = Paginator(ordenes_qs, 20)
     page_number = request.GET.get('page')
@@ -939,17 +973,31 @@ def ordenes_list(request):
 # Detalle de una orden de compra
 @login_required
 def orden_detalle(request, pk):
-    orden = get_object_or_404(OrdenDeCompra, pk=pk)
+    orden = get_object_or_404(OrdenDeCompra.objects.select_related('rubro'), pk=pk)
+    
+    # Verificar permisos por rubro si no es superusuario o staff
+    user_rubro = get_user_rubro(request.user)
+    if user_rubro and orden.rubro != user_rubro:
+        from django.http import Http404
+        raise Http404("No tienes permisos para ver esta orden de compra.")
+    
     return render(request, 'inventario/orden_detalle.html', {'orden': orden})
 
 # Edición de una orden de compra y sus ítems
 @login_required
 def orden_editar(request, pk):
-    orden = get_object_or_404(OrdenDeCompra, pk=pk)
+    orden = get_object_or_404(OrdenDeCompra.objects.select_related('rubro'), pk=pk)
+    
+    # Verificar permisos por rubro si no es superusuario o staff
+    user_rubro = get_user_rubro(request.user)
+    if user_rubro and orden.rubro != user_rubro:
+        from django.http import Http404
+        raise Http404("No tienes permisos para editar esta orden de compra.")
+    
     OrdenItemFormSet = inlineformset_factory(OrdenDeCompra, OrdenDeCompraItem, form=OrdenDeCompraItemForm, extra=0, can_delete=True)
     import sys
     if request.method == 'POST':
-        form = OrdenDeCompraForm(request.POST, instance=orden)
+        form = OrdenDeCompraForm(request.POST, instance=orden, user=request.user)
         formset = OrdenItemFormSet(request.POST, instance=orden, prefix='items')
         print("=== DEBUG ORDEN EDITAR ===", file=sys.stderr)
         print("POST data:", dict(request.POST), file=sys.stderr)
@@ -971,7 +1019,7 @@ def orden_editar(request, pk):
             messages.success(request, 'Orden de compra actualizada correctamente.')
             return redirect('orden_detalle', pk=orden.id)
     else:
-        form = OrdenDeCompraForm(instance=orden)
+        form = OrdenDeCompraForm(instance=orden, user=request.user)
         formset = OrdenItemFormSet(instance=orden, prefix='items')
         print("=== DEBUG ORDEN EDITAR GET ===", file=sys.stderr)
         print("form.fecha_inicio initial:", form.initial.get('fecha_inicio'), file=sys.stderr)
@@ -1102,10 +1150,147 @@ class OrdenDeCompraForm(forms.ModelForm):
 
     class Meta:
         model = OrdenDeCompra
-        fields = ['numero', 'fecha_inicio', 'fecha_fin', 'proveedor']
+        fields = ['numero', 'fecha_inicio', 'fecha_fin', 'proveedor', 'rubro']
         widgets = {
             'numero': forms.TextInput(attrs={'class': 'form-control'}),
             'proveedor': forms.TextInput(attrs={'class': 'form-control'}),
+            'rubro': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        import datetime
+        instance = kwargs.get('instance', None)
+        data = args[0] if args else None
+        initial = kwargs.get('initial', {}) or {}
+        # Si es edición y no hay data (GET), forzar initial como string yyyy-MM-dd
+        if instance and instance.pk and not data:
+            if instance.fecha_inicio:
+                initial['fecha_inicio'] = instance.fecha_inicio.strftime('%Y-%m-%d')
+            if instance.fecha_fin:
+                initial['fecha_fin'] = instance.fecha_fin.strftime('%Y-%m-%d')
+            kwargs['initial'] = initial
+        super().__init__(*args, **kwargs)
+        # Si initial viene en formato dd/mm/yyyy, convertir a yyyy-MM-dd
+        for field in ['fecha_inicio', 'fecha_fin']:
+            val = self.fields[field].initial
+            if isinstance(val, (datetime.date, datetime.datetime)):
+                self.fields[field].initial = val.strftime('%Y-%m-%d')
+            elif isinstance(val, str) and '/' in val:
+                try:
+                    d = datetime.datetime.strptime(val, '%d/%m/%Y')
+                    self.fields[field].initial = d.strftime('%Y-%m-%d')
+                except Exception:
+                    self.fields[field].initial = None
+        
+        # Filtrar rubros por permisos del usuario si no es superusuario o staff
+        if self.user and not (self.user.is_superuser or self.user.is_staff):
+            user_rubro = get_user_rubro(self.user)
+            if user_rubro:
+                self.fields['rubro'].queryset = Rubro.objects.filter(pk=user_rubro.pk)
+
+    def clean_numero(self):
+        numero = self.cleaned_data['numero']
+        # Excluir la instancia actual al verificar duplicados (para ediciones)
+        qs = OrdenDeCompra.objects.filter(numero=numero)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('Ya existe una orden de compra con ese número.')
+        return numero
+
+
+class EntregaForm(forms.ModelForm):
+    class Meta:
+        model = Entrega
+        fields = ['area_persona', 'observaciones', 'orden_de_compra']
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar órdenes de compra por rubro del usuario si no es superusuario o staff
+        if self.user:
+            user_rubro = None
+            if not (self.user.is_superuser or self.user.is_staff):
+                rubro_groups = self.user.groups.filter(name__startswith='Rubro: ')
+                if rubro_groups.exists():
+                    # Extraer el nombre del rubro del nombre del grupo
+                    group_name = rubro_groups.first().name
+                    rubro_name = group_name.replace('Rubro: ', '')
+                    try:
+                        user_rubro = Rubro.objects.get(nombre=rubro_name)
+                    except Rubro.DoesNotExist:
+                        user_rubro = None
+            if user_rubro:
+                self.fields['orden_de_compra'].queryset = OrdenDeCompra.objects.filter(rubro=user_rubro)
+
+
+
+class EntregaItemForm(forms.ModelForm):
+    class Meta:
+        model = EntregaItem
+        fields = ['orden_de_compra', 'bien', 'cantidad', 'precio_unitario']
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['precio_unitario'].required = False
+        self.fields['precio_unitario'].widget = forms.HiddenInput()
+        
+        # Filtrar órdenes de compra por rubro del usuario si no es superusuario o staff
+        if self.user and not (self.user.is_superuser or self.user.is_staff):
+            rubro_groups = self.user.groups.filter(name__startswith='Rubro: ')
+            if rubro_groups.exists():
+                # Extraer el nombre del rubro del nombre del grupo
+                group_name = rubro_groups.first().name
+                rubro_name = group_name.replace('Rubro: ', '')
+                try:
+                    user_rubro = Rubro.objects.get(nombre=rubro_name)
+                    self.fields['orden_de_compra'].queryset = OrdenDeCompra.objects.filter(rubro=user_rubro)
+                except Rubro.DoesNotExist:
+                    pass
+        
+        # Filtrar bienes que tienen stock disponible (sin considerar uso en otras filas por ahora)
+        bienes_con_stock = []
+        for bien in Bien.objects.all():
+            # Calcular stock total del bien
+            comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            entregado = EntregaItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+            stock_disponible = comprado - entregado
+            
+            if stock_disponible > 0:
+                bienes_con_stock.append(bien.id)
+        
+        # Aplicar el filtro al queryset del campo bien
+        self.fields['bien'].queryset = Bien.objects.filter(id__in=bienes_con_stock)
+
+class ServicioForm(forms.ModelForm):
+    fecha_inicio = forms.DateField(
+        label="Fecha de inicio",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y']
+    )
+    fecha_fin = forms.DateField(
+        label="Fecha de finalización",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y']
+    )
+
+    class Meta:
+        model = Servicio
+        fields = ['nombre', 'descripcion', 'proveedor', 'frecuencia', 'costo_mensual', 
+                 'fecha_inicio', 'fecha_fin', 'estado', 'rubro', 'observaciones']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'proveedor': forms.TextInput(attrs={'class': 'form-control'}),
+            'frecuencia': forms.Select(attrs={'class': 'form-control'}),
+            'costo_mensual': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'rubro': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -1133,58 +1318,25 @@ class OrdenDeCompraForm(forms.ModelForm):
                 except Exception:
                     self.fields[field].initial = None
 
-    def clean_numero(self):
-        numero = self.cleaned_data['numero']
-        # Excluir la instancia actual al verificar duplicados (para ediciones)
-        qs = OrdenDeCompra.objects.filter(numero=numero)
-        if self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError('Ya existe una orden de compra con ese número.')
-        return numero
-
-
-class EntregaForm(forms.ModelForm):
-    class Meta:
-        model = Entrega
-        fields = ['area_persona', 'observaciones', 'orden_de_compra']
-
-
-
-class EntregaItemForm(forms.ModelForm):
-    class Meta:
-        model = EntregaItem
-        fields = ['orden_de_compra', 'bien', 'cantidad', 'precio_unitario']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['precio_unitario'].required = False
-        self.fields['precio_unitario'].widget = forms.HiddenInput()
-        
-        # Filtrar bienes que tienen stock disponible (sin considerar uso en otras filas por ahora)
-        bienes_con_stock = []
-        for bien in Bien.objects.all():
-            # Calcular stock total del bien
-            comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
-            entregado = EntregaItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
-            stock_disponible = comprado - entregado
-            
-            if stock_disponible > 0:
-                bienes_con_stock.append(bien.id)
-        
-        # Aplicar el filtro al queryset del campo bien
-        self.fields['bien'].queryset = Bien.objects.filter(id__in=bienes_con_stock)
-
 @login_required
 def dashboard(request):
     from django.db.models import Sum
     from datetime import date, timedelta
+    from django.core.paginator import Paginator, EmptyPage
+    
     # Órdenes de compra próximas a vencer y vencidas (fecha_fin dentro de los próximos 4 meses o ya vencidas)
     hoy = date.today()
     cuatro_meses = hoy + timedelta(days=120)
     ordenes_vencer = []
     from .models import OrdenDeCompra
-    for oc in OrdenDeCompra.objects.exclude(fecha_fin=None):
+    
+    # Filtrar órdenes por rubro del usuario si no es superusuario o staff
+    user_rubro = get_user_rubro(request.user)
+    ordenes_qs = OrdenDeCompra.objects.exclude(fecha_fin=None)
+    if user_rubro:
+        ordenes_qs = ordenes_qs.filter(rubro=user_rubro)
+    
+    for oc in ordenes_qs:
         if oc.fecha_fin <= cuatro_meses:
             dias_restantes = (oc.fecha_fin - hoy).days
             ordenes_vencer.append({
@@ -1192,6 +1344,22 @@ def dashboard(request):
                 'fecha_inicio': oc.fecha_inicio,
                 'dias_restantes': dias_restantes
             })
+
+    # Paginación para órdenes de compra
+    ordenes_paginator = Paginator(ordenes_vencer, 10)
+    ordenes_page = request.GET.get('ordenes_page')
+    try:
+        ordenes_page_int = int(ordenes_page) if ordenes_page else 1
+    except (TypeError, ValueError):
+        ordenes_page_int = 1
+    if ordenes_page_int < 1:
+        ordenes_page_int = 1
+    if ordenes_page_int > ordenes_paginator.num_pages and ordenes_paginator.num_pages > 0:
+        ordenes_page_int = ordenes_paginator.num_pages
+    try:
+        ordenes_page_obj = ordenes_paginator.page(ordenes_page_int)
+    except EmptyPage:
+        ordenes_page_obj = ordenes_paginator.page(1)
 
     # Productos bajos de stock (stock <= 10)
     bienes = Bien.objects.all()
@@ -1204,9 +1372,53 @@ def dashboard(request):
             bajos_stock.append({'bien': bien, 'stock': stock_actual})
 
     bajos_stock = sorted(bajos_stock, key=lambda x: x['stock'])
+
+    # Paginación para productos bajos en stock
+    stock_paginator = Paginator(bajos_stock, 10)
+    stock_page = request.GET.get('stock_page')
+    try:
+        stock_page_int = int(stock_page) if stock_page else 1
+    except (TypeError, ValueError):
+        stock_page_int = 1
+    if stock_page_int < 1:
+        stock_page_int = 1
+    if stock_page_int > stock_paginator.num_pages and stock_paginator.num_pages > 0:
+        stock_page_int = stock_paginator.num_pages
+    try:
+        stock_page_obj = stock_paginator.page(stock_page_int)
+    except EmptyPage:
+        stock_page_obj = stock_paginator.page(1)
+
+    # Servicios próximos a vencer (dentro de 30 días)
+    servicios_por_vencer = []
+    for servicio in Servicio.objects.filter(estado__in=['ACTIVO', 'POR_VENCER']):
+        dias = servicio.dias_para_vencimiento()
+        if dias is not None and dias <= 30:
+            servicios_por_vencer.append({
+                'servicio': servicio,
+                'dias_restantes': dias
+            })
+
+    # Paginación para servicios próximos a vencer
+    servicios_paginator = Paginator(servicios_por_vencer, 10)
+    servicios_page = request.GET.get('servicios_page')
+    try:
+        servicios_page_int = int(servicios_page) if servicios_page else 1
+    except (TypeError, ValueError):
+        servicios_page_int = 1
+    if servicios_page_int < 1:
+        servicios_page_int = 1
+    if servicios_page_int > servicios_paginator.num_pages and servicios_paginator.num_pages > 0:
+        servicios_page_int = servicios_paginator.num_pages
+    try:
+        servicios_page_obj = servicios_paginator.page(servicios_page_int)
+    except EmptyPage:
+        servicios_page_obj = servicios_paginator.page(1)
+
     return render(request, 'inventario/dashboard.html', {
-        'ordenes_vencer': ordenes_vencer,
-        'bajos_stock': bajos_stock
+        'ordenes_page_obj': ordenes_page_obj,
+        'stock_page_obj': stock_page_obj,
+        'servicios_page_obj': servicios_page_obj
     })
 
 @login_required
@@ -1275,7 +1487,7 @@ from django.forms import inlineformset_factory
 def agregar_orden(request):
     OrdenItemFormSet = inlineformset_factory(OrdenDeCompra, OrdenDeCompraItem, form=OrdenDeCompraItemForm, extra=1, can_delete=True)
     if request.method == 'POST':
-        form = OrdenDeCompraForm(request.POST)
+        form = OrdenDeCompraForm(request.POST, user=request.user)
         formset = OrdenItemFormSet(request.POST)
         if form.is_valid() and formset.is_valid():
             orden = form.save()
@@ -1287,7 +1499,7 @@ def agregar_orden(request):
             messages.success(request, 'Orden de compra agregada correctamente.')
             return redirect('dashboard')
     else:
-        form = OrdenDeCompraForm()
+        form = OrdenDeCompraForm(user=request.user)
         formset = OrdenItemFormSet()
     return render(request, 'inventario/orden_form.html', {
         'form': form,
@@ -1301,7 +1513,8 @@ def agregar_orden(request):
 @login_required
 def crear_entrega(request):
     EntregaItemFormSet = forms.inlineformset_factory(
-        Entrega, EntregaItem, form=EntregaItemForm, extra=1, can_delete=True
+        Entrega, EntregaItem, form=EntregaItemForm, extra=1, can_delete=True,
+        form_kwargs={'user': request.user}
     )
     if request.method == 'POST':
         print("=== DEBUG BACKEND ===")
@@ -1312,7 +1525,7 @@ def crear_entrega(request):
                 prefix = key.replace('-TOTAL_FORMS', '')
                 print(f"Prefijo detectado: '{prefix}'")
                 break
-        form = EntregaForm(request.POST)
+        form = EntregaForm(request.POST, user=request.user)
         formset = EntregaItemFormSet(request.POST or None)
         print("Form válido:", form.is_valid())
         print("Formset válido:", formset.is_valid())
@@ -1415,7 +1628,7 @@ def crear_entrega(request):
                 }
                 return JsonResponse({'success': False, 'errors': errors})
     else:
-        form = EntregaForm()
+        form = EntregaForm(user=request.user)
         formset = EntregaItemFormSet()
     return render(request, 'inventario/entrega_form.html', {'form': form, 'formset': formset})
 
@@ -1423,14 +1636,15 @@ def crear_entrega(request):
 def editar_entrega(request, pk):
     entrega = get_object_or_404(Entrega, pk=pk)
     EntregaItemFormSet = forms.inlineformset_factory(
-        Entrega, EntregaItem, form=EntregaItemForm, extra=0, can_delete=True
+        Entrega, EntregaItem, form=EntregaItemForm, extra=0, can_delete=True,
+        form_kwargs={'user': request.user}
     )
     
     if request.method == 'POST':
         print("=== DEBUG EDITAR ENTREGA ===")
         print("POST data:", dict(request.POST))
         
-        form = EntregaForm(request.POST, instance=entrega)
+        form = EntregaForm(request.POST, instance=entrega, user=request.user)
         formset = EntregaItemFormSet(request.POST, instance=entrega)
         
         print("Form válido:", form.is_valid())
@@ -1545,7 +1759,7 @@ def editar_entrega(request, pk):
                 }
                 return JsonResponse({'success': False, 'errors': errors})
     else:
-        form = EntregaForm(instance=entrega)
+        form = EntregaForm(instance=entrega, user=request.user)
         formset = EntregaItemFormSet(instance=entrega)
     
     return render(request, 'inventario/entrega_form.html', {
@@ -1647,3 +1861,86 @@ def audit_log_list(request):
     }
 
     return render(request, 'inventario/audit_log.html', context)
+
+# ===== VISTAS PARA SERVICIOS =====
+
+@login_required
+def servicios_list(request):
+    q = request.GET.get('q', '').strip()
+    estado = request.GET.get('estado', '')
+    frecuencia = request.GET.get('frecuencia', '')
+    
+    servicios = Servicio.objects.select_related('rubro').all()
+    
+    if q:
+        servicios = servicios.filter(
+            Q(nombre__icontains=q) |
+            Q(proveedor__icontains=q) |
+            Q(descripcion__icontains=q)
+        )
+    
+    if estado:
+        servicios = servicios.filter(estado=estado)
+    
+    if frecuencia:
+        servicios = servicios.filter(frecuencia=frecuencia)
+    
+    servicios = servicios.order_by('nombre')
+    
+    # Paginación
+    paginator = Paginator(servicios, 20)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+    
+    return render(request, 'inventario/servicios_list.html', {
+        'page_obj': page_obj, 
+        'q': q, 
+        'estado': estado, 
+        'frecuencia': frecuencia
+    })
+
+@login_required
+def agregar_servicio(request):
+    if request.method == 'POST':
+        form = ServicioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Servicio agregado correctamente.')
+            return redirect('servicios_list')
+    else:
+        form = ServicioForm()
+    return render(request, 'inventario/servicio_form.html', {'form': form, 'titulo': 'Agregar Servicio'})
+
+@login_required
+def editar_servicio(request, pk):
+    servicio = get_object_or_404(Servicio, pk=pk)
+    if request.method == 'POST':
+        form = ServicioForm(request.POST, instance=servicio)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Servicio actualizado correctamente.')
+            return redirect('servicios_list')
+    else:
+        form = ServicioForm(instance=servicio)
+    return render(request, 'inventario/servicio_form.html', {
+        'form': form, 
+        'titulo': 'Editar Servicio', 
+        'editando': True, 
+        'servicio': servicio
+    })
+
+@login_required
+def servicio_detalle(request, pk):
+    servicio = get_object_or_404(Servicio, pk=pk)
+    return render(request, 'inventario/servicio_detalle.html', {'servicio': servicio})

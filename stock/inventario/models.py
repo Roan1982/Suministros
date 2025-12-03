@@ -44,6 +44,7 @@ class OrdenDeCompra(models.Model):
     fecha_inicio = models.DateField(verbose_name="Fecha de inicio")
     fecha_fin = models.DateField(verbose_name="Fecha de finalización", null=True, blank=True)
     proveedor = models.CharField(max_length=100, blank=True)
+    rubro = models.ForeignKey(Rubro, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Rubro principal")
 
     def save(self, *args, **kwargs):
         if self.numero:
@@ -92,6 +93,64 @@ class Bien(models.Model):
 
     def __str__(self):
         return self.nombre
+
+class Servicio(models.Model):
+    FRECUENCIA_CHOICES = [
+        ('SEMANAL', 'Semanal'),
+        ('QUINCENAL', 'Quincenal'),
+        ('MENSUAL', 'Mensual'),
+    ]
+
+    ESTADO_CHOICES = [
+        ('ACTIVO', 'Activo'),
+        ('POR_VENCER', 'Por vencer'),
+        ('VENCIDO', 'Vencido'),
+        ('SUSPENDIDO', 'Suspendido'),
+    ]
+
+    nombre = models.CharField(max_length=200, verbose_name="Nombre del servicio")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    proveedor = models.CharField(max_length=100, verbose_name="Proveedor")
+    frecuencia = models.CharField(max_length=10, choices=FRECUENCIA_CHOICES, verbose_name="Frecuencia")
+    costo_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Costo mensual")
+    fecha_inicio = models.DateField(verbose_name="Fecha de inicio")
+    fecha_fin = models.DateField(null=True, blank=True, verbose_name="Fecha de finalización")
+    estado = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='ACTIVO', verbose_name="Estado")
+    rubro = models.ForeignKey(Rubro, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Rubro")
+    observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+
+    def save(self, *args, **kwargs):
+        if self.nombre:
+            self.nombre = self.nombre.upper()
+        if self.proveedor:
+            self.proveedor = self.proveedor.upper()
+        if self.descripcion:
+            self.descripcion = self.descripcion.upper()
+        if self.observaciones:
+            self.observaciones = self.observaciones.upper()
+        super().save(*args, **kwargs)
+
+    def calcular_proxima_renovacion(self):
+        """Calcula la fecha de próxima renovación basada en la frecuencia"""
+        from datetime import timedelta
+        if self.frecuencia == 'SEMANAL':
+            return self.fecha_inicio + timedelta(weeks=1)
+        elif self.frecuencia == 'QUINCENAL':
+            return self.fecha_inicio + timedelta(weeks=2)
+        elif self.frecuencia == 'MENSUAL':
+            from dateutil.relativedelta import relativedelta
+            return self.fecha_inicio + relativedelta(months=1)
+        return None
+
+    def dias_para_vencimiento(self):
+        """Calcula días restantes para vencimiento"""
+        from datetime import date
+        if self.fecha_fin:
+            return (self.fecha_fin - date.today()).days
+        return None
+
+    def __str__(self):
+        return f"{self.nombre} - {self.proveedor} ({self.get_frecuencia_display()})"
 
 class Almacen(models.Model):
     nombre = models.CharField(max_length=100)

@@ -1,0 +1,311 @@
+{% extends 'inventario/base.html' %}
+{% load static %}
+
+{% block title %}{{ servicio.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Header Card -->
+            <div class="card shadow-sm mb-4" style="border-left: 5px solid #007bff;">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-cogs mr-2"></i>{{ servicio.nombre }}
+                            </h3>
+                            <small class="text-light">{{ servicio.proveedor }}</small>
+                        </div>
+                        <div class="card-tools">
+                            <a href="{% url 'editar_servicio' servicio.pk %}" class="btn btn-light btn-sm mr-2">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{% url 'servicios_list' %}" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Alert -->
+            {% if servicio.estado == 'VENCIDO' %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>¡Atención!</strong> Este servicio está vencido.
+                {% if servicio.dias_para_vencimiento %}
+                Venció hace {% widthratio servicio.dias_para_vencimiento 1 -1 %} días.
+                {% endif %}
+                <button type="button" class="close" data-dismiss="alert">
+                    <span>&times;</span>
+                </button>
+            </div>
+            {% elif servicio.estado == 'POR_VENCER' %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-clock"></i>
+                <strong>Próximo a vencer</strong> Este servicio vence pronto.
+                {% if servicio.dias_para_vencimiento %}
+                Faltan {{ servicio.dias_para_vencimiento }} días.
+                {% endif %}
+                <button type="button" class="close" data-dismiss="alert">
+                    <span>&times;</span>
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <!-- Información Principal -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle text-primary"></i> Información Principal
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-building text-muted mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Proveedor</strong><br>
+                                            <span class="text-muted">{{ servicio.proveedor }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-calendar-alt text-muted mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Frecuencia</strong><br>
+                                            <span class="badge badge-dark badge-lg">{{ servicio.get_frecuencia_display }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-dollar-sign text-muted mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Costo Mensual</strong><br>
+                                            <span class="h5 text-success font-weight-bold">${{ servicio.costo_mensual }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-circle text-muted mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Estado</strong><br>
+                                            {% if servicio.estado == 'ACTIVO' %}
+                                                <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                                    <i class="fas fa-check-circle"></i> Activo
+                                                </span>
+                                            {% elif servicio.estado == 'POR_VENCER' %}
+                                                <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                                    <i class="fas fa-clock"></i> Por vencer
+                                                </span>
+                                            {% elif servicio.estado == 'VENCIDO' %}
+                                                <span class="badge badge-danger-custom badge-lg font-weight-bold">
+                                                    <i class="fas fa-times-circle"></i> Vencido
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge-secondary-custom badge-lg font-weight-bold">{{ servicio.get_estado_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fechas y Estado -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calendar-check text-primary"></i> Fechas y Estado
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-play-circle text-success mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Fecha de Inicio</strong><br>
+                                            <span class="text-muted">{{ servicio.fecha_inicio|date:"d/m/Y" }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-stop-circle text-danger mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Fecha de Finalización</strong><br>
+                                            {% if servicio.fecha_fin %}
+                                                <span class="text-muted">{{ servicio.fecha_fin|date:"d/m/Y" }}</span>
+                                            {% else %}
+                                                <span class="text-muted font-italic">Sin fecha de finalización</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock text-warning mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Días para vencer</strong><br>
+                                            {% if servicio.dias_para_vencimiento %}
+                                                {% if servicio.dias_para_vencimiento > 0 %}
+                                                    <span class="text-success font-weight-bold">{{ servicio.dias_para_vencimiento }} días</span>
+                                                {% elif servicio.dias_para_vencimiento == 0 %}
+                                                    <span class="text-warning font-weight-bold">
+                                                        <i class="fas fa-exclamation-triangle"></i> Vence hoy
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-danger font-weight-bold">
+                                                        <i class="fas fa-times"></i> Vencido hace {% widthratio servicio.dias_para_vencimiento 1 -1 %} días
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-tag text-info mr-3" style="width: 20px;"></i>
+                                        <div>
+                                            <strong>Rubro</strong><br>
+                                            {% if servicio.rubro %}
+                                                <span class="badge badge-secondary badge-lg font-weight-bold">{{ servicio.rubro.nombre }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Descripción -->
+            {% if servicio.descripcion %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-alt text-primary"></i> Descripción
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">{{ servicio.descripcion }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Observaciones -->
+            {% if servicio.observaciones %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-sticky-note text-primary"></i> Observaciones
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">{{ servicio.observaciones }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Próxima renovación -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-info">
+                        <div class="card-body text-center">
+                            <h6 class="text-info mb-2">
+                                <i class="fas fa-sync-alt"></i> Próxima Renovación
+                            </h6>
+                            <p class="mb-0">
+                                {% if servicio.calcular_proxima_renovacion %}
+                                    <strong>{{ servicio.calcular_proxima_renovacion|date:"l, d F Y" }}</strong>
+                                {% else %}
+                                    <span class="text-muted">No disponible</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-lg {
+    font-size: 0.85em;
+    padding: 0.5em 0.75em;
+    font-weight: 600 !important;
+}
+
+.badge-dark {
+    background-color: #343a40 !important;
+    color: white !important;
+}
+
+.badge-secondary {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+.badge-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+/* Estados con colores personalizados más oscuros */
+.badge-success-custom {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge-warning-custom {
+    background-color: #fd7e14 !important; /* Naranja más oscuro */
+    color: white !important;
+}
+
+.badge-danger-custom {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.badge-secondary-custom {
+    background-color: #495057 !important; /* Gris más oscuro */
+    color: white !important;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+</style>
+{% endblock %}

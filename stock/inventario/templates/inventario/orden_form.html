@@ -41,6 +41,13 @@
               {% endif %}
             </div>
             <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">{{ form.rubro.label }}</label>
+              {{ form.rubro }}
+              {% if form.rubro.errors %}
+                <div class="text-danger small">{{ form.rubro.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
               <div class="row g-2">
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">{{ form.fecha_inicio.label }}</label>

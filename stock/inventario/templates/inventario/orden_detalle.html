@@ -2,6 +2,7 @@
 {% block content %}
 <h1>Detalle de Orden de Compra #{{ orden.numero }}</h1>
 <p><strong>Proveedor:</strong> {{ orden.proveedor }}</p>
+<p><strong>Rubro:</strong> {{ orden.rubro.nombre }}</p>
 <p><strong>Fecha de inicio:</strong> {{ orden.fecha_inicio }}</p>
 <p><strong>Fecha de fin:</strong> {{ orden.fecha_fin|default:'-' }}</p>
     <a href="{% url 'orden_editar' orden.id %}" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm d-inline-flex align-items-center">

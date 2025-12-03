@@ -18,6 +18,7 @@
                 <tr>
                     <th>Número</th>
                     <th>Proveedor</th>
+                    <th>Rubro</th>
                     <th>Fecha de inicio</th>
                     <th>Fecha de fin</th>
                     <th class="text-center">Acciones</th>
@@ -28,6 +29,7 @@
                 <tr>
                     <td>{{ orden.numero }}</td>
                     <td>{{ orden.proveedor }}</td>
+                    <td>{{ orden.rubro.nombre }}</td>
                     <td>{{ orden.fecha_inicio }}</td>
                     <td>{{ orden.fecha_fin|default:'-' }}</td>
                     <td class="text-center">
@@ -36,7 +38,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="text-center text-muted">No hay órdenes de compra registradas.</td></tr>
+                <tr><td colspan="6" class="text-center text-muted">No hay órdenes de compra registradas.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

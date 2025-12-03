@@ -1,9 +1,21 @@
 from django.contrib import admin
-from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Almacen, Entrega, EntregaItem
+from .models import Rubro, Bien, Servicio, OrdenDeCompra, OrdenDeCompraItem, Almacen, Entrega, EntregaItem
 
 admin.site.register(Rubro)
 admin.site.register(Bien)
 admin.site.register(Almacen)
+
+@admin.register(Servicio)
+class ServicioAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "proveedor", "frecuencia", "costo_mensual", "estado", "fecha_inicio", "fecha_fin", "dias_para_vencimiento")
+    list_filter = ("estado", "frecuencia", "rubro", "proveedor")
+    search_fields = ("nombre", "proveedor", "descripcion")
+    date_hierarchy = "fecha_inicio"
+    readonly_fields = ("dias_para_vencimiento",)
+
+    def dias_para_vencimiento(self, obj):
+        return obj.dias_para_vencimiento()
+    dias_para_vencimiento.short_description = "Días para vencimiento"
 
 
 class EntregaItemInline(admin.TabularInline):

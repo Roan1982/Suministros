@@ -1,0 +1,164 @@
+{% extends 'inventario/base.html' %}
+{% load static %}
+
+{% block title %}Servicios{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Gestión de Servicios</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'agregar_servicio' %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Agregar Servicio
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="card-body border-bottom">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" name="q" class="form-control" placeholder="Buscar servicios..." value="{{ q }}">
+                        </div>
+                        <div class="col-md-2">
+                            <select name="estado" class="form-control">
+                                <option value="">Todos los estados</option>
+                                <option value="ACTIVO" {% if estado == 'ACTIVO' %}selected{% endif %}>Activo</option>
+                                <option value="POR_VENCER" {% if estado == 'POR_VENCER' %}selected{% endif %}>Por vencer</option>
+                                <option value="VENCIDO" {% if estado == 'VENCIDO' %}selected{% endif %}>Vencido</option>
+                                <option value="SUSPENDIDO" {% if estado == 'SUSPENDIDO' %}selected{% endif %}>Suspendido</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="frecuencia" class="form-control">
+                                <option value="">Todas las frecuencias</option>
+                                <option value="SEMANAL" {% if frecuencia == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+                                <option value="QUINCENAL" {% if frecuencia == 'QUINCENAL' %}selected{% endif %}>Quincenal</option>
+                                <option value="MENSUAL" {% if frecuencia == 'MENSUAL' %}selected{% endif %}>Mensual</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-search"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'servicios_list' %}" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-times"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla de servicios -->
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-hover text-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Servicio</th>
+                                <th>Proveedor</th>
+                                <th>Frecuencia</th>
+                                <th>Costo Mensual</th>
+                                <th>Estado</th>
+                                <th>Próxima Renovación</th>
+                                <th>Días para vencer</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for servicio in page_obj %}
+                            <tr>
+                                <td>
+                                    <strong>{{ servicio.nombre }}</strong><br>
+                                    <small class="text-muted">{{ servicio.descripcion|truncatechars:50 }}</small>
+                                </td>
+                                <td>{{ servicio.proveedor }}</td>
+                                <td>
+                                    <span class="badge badge-info">{{ servicio.get_frecuencia_display }}</span>
+                                </td>
+                                <td>${{ servicio.costo_mensual }}</td>
+                                <td>
+                                    {% if servicio.estado == 'ACTIVO' %}
+                                        <span class="badge badge-success">Activo</span>
+                                    {% elif servicio.estado == 'POR_VENCER' %}
+                                        <span class="badge badge-warning">Por vencer</span>
+                                    {% elif servicio.estado == 'VENCIDO' %}
+                                        <span class="badge badge-danger">Vencido</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ servicio.get_estado_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ servicio.fecha_inicio|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if servicio.dias_para_vencimiento %}
+                                        {% if servicio.dias_para_vencimiento > 0 %}
+                                            <span class="text-success">{{ servicio.dias_para_vencimiento }} días</span>
+                                        {% elif servicio.dias_para_vencimiento == 0 %}
+                                            <span class="text-warning">Hoy</span>
+                                        {% else %}
+                                            <span class="text-danger">Vencido hace {% widthratio servicio.dias_para_vencimiento 1 -1 %} días</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'servicio_detalle' servicio.pk %}" class="btn btn-info btn-sm" title="Ver detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'editar_servicio' servicio.pk %}" class="btn btn-warning btn-sm" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">
+                                    No se encontraron servicios.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Navegación de páginas">
+                        <ul class="pagination pagination-sm m-0 float-right">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if frecuencia %}&frecuencia={{ frecuencia }}{% endif %}">&laquo;</a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <a class="page-link" href="#">{{ num }}</a>
+                                </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if frecuencia %}&frecuencia={{ frecuencia }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if frecuencia %}&frecuencia={{ frecuencia }}{% endif %}">&raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

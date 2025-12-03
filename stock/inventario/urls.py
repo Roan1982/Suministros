@@ -38,4 +38,9 @@ urlpatterns = [
     path('reportes/ranking_proveedores/', views.reporte_ranking_proveedores, name='reporte_ranking_proveedores'),
     path('reportes/personalizado/', views.reporte_personalizado, name='reporte_personalizado'),
     path('auditoria/', views.audit_log_list, name='audit_log'),
+    # URLs para servicios
+    path('servicios/', views.servicios_list, name='servicios_list'),
+    path('agregar_servicio/', views.agregar_servicio, name='agregar_servicio'),
+    path('servicios/<int:pk>/editar/', views.editar_servicio, name='editar_servicio'),
+    path('servicios/<int:pk>/', views.servicio_detalle, name='servicio_detalle'),
 ]
