@@ -253,5 +253,3 @@ docker-compose restart web
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
-
-**⭐ Si este proyecto te resulta útil, ¡dale una estrella en GitHub!**</content>
