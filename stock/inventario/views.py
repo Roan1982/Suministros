@@ -1048,9 +1048,15 @@ class RubroForm(forms.ModelForm):
 
 
 class BienForm(forms.ModelForm):
+    imagen = forms.FileField(
+        required=False,
+        label='Imagen del bien',
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'})
+    )
+
     class Meta:
         model = Bien
-        fields = ['rubro', 'nombre', 'catalogo']
+        fields = ['rubro', 'nombre', 'catalogo', 'imagen']
         widgets = {
             'rubro': forms.Select(attrs={
                 'class': 'form-control select2-dropdown',
@@ -1231,9 +1237,12 @@ def editar_rubro(request, pk):
 @login_required
 def agregar_bien(request):
     if request.method == 'POST':
-        form = BienForm(request.POST)
+        form = BienForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            bien = form.save(commit=False)
+            if 'imagen' in request.FILES:
+                bien.imagen = request.FILES['imagen'].read()
+            bien.save()
             messages.success(request, 'Bien agregado correctamente.')
             return redirect('dashboard')
     else:
@@ -1244,9 +1253,12 @@ def agregar_bien(request):
 def editar_bien(request, pk):
     bien = get_object_or_404(Bien, pk=pk)
     if request.method == 'POST':
-        form = BienForm(request.POST, instance=bien)
+        form = BienForm(request.POST, request.FILES, instance=bien)
         if form.is_valid():
-            form.save()
+            bien = form.save(commit=False)
+            if 'imagen' in request.FILES:
+                bien.imagen = request.FILES['imagen'].read()
+            bien.save()
             messages.success(request, 'Bien actualizado correctamente.')
             return redirect('bienes_list')
     else:

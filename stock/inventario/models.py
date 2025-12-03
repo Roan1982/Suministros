@@ -48,6 +48,7 @@ class Bien(models.Model):
     nombre = models.CharField(max_length=100)
     catalogo = models.CharField(max_length=100, blank=True)
     renglon = models.CharField(max_length=50, blank=True)
+    imagen = models.BinaryField(null=True, blank=True, editable=True)  # Campo para almacenar la imagen como blob
 
     def save(self, *args, **kwargs):
         if self.nombre:

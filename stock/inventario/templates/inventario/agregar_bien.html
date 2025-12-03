@@ -1,5 +1,6 @@
 {% extends 'inventario/base.html' %}
 {% load static %}
+{% load form_extras %}
 {% block content %}
 <div class="row justify-content-center w-100">
   <div class="col-lg-8 col-xl-7">
@@ -8,13 +9,23 @@
         <h2 class="mb-4 fw-bold text-primary">
           <i class="fa-solid fa-box me-2"></i>{{ titulo }}
         </h2>
-        <form method="post" autocomplete="off" id="form-agregar-bien">
+        <form method="post" enctype="multipart/form-data" autocomplete="off" id="form-agregar-bien">
           {% csrf_token %}
           <div class="mb-4">
             {% for field in form %}
               <div class="mb-3">
                 <label class="form-label fw-semibold">{{ field.label }}</label>
-                {{ field }}
+                {% if field.name == 'imagen' %}
+                  {{ field }}
+                  {% if editando and bien.imagen %}
+                    <div class="mt-2">
+                      <small class="text-muted">Imagen actual:</small><br>
+                      <img src="data:image/jpeg;base64,{{ bien.imagen|base64encode }}" alt="Imagen actual" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                    </div>
+                  {% endif %}
+                {% else %}
+                  {{ field }}
+                {% endif %}
                 {% if field.errors %}
                   <div class="text-danger small">{{ field.errors|striptags }}</div>
                 {% endif %}
