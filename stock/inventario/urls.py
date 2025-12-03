@@ -37,4 +37,5 @@ urlpatterns = [
     path('reportes/ranking_bienes/', views.reporte_ranking_bienes, name='reporte_ranking_bienes'),
     path('reportes/ranking_proveedores/', views.reporte_ranking_proveedores, name='reporte_ranking_proveedores'),
     path('reportes/personalizado/', views.reporte_personalizado, name='reporte_personalizado'),
+    path('auditoria/', views.audit_log_list, name='audit_log'),
 ]

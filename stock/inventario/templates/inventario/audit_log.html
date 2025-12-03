@@ -1,0 +1,213 @@
+{% extends 'inventario/base.html' %}
+{% block title %}Auditoría{% endblock %}
+
+{% block content %}
+<div class="card mt-5 w-100">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="mb-0"><i class="fa-solid fa-history me-2 text-warning"></i>Registros de Auditoría</h3>
+      <span class="badge bg-warning text-dark fs-6">Solo Administradores</span>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-3 mb-4 p-3 bg-light rounded">
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Buscar</label>
+        <input type="text" name="q" class="form-control" placeholder="Usuario, objeto..." value="{{ q }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">Acción</label>
+        <select name="action" class="form-select">
+          <option value="">Todas</option>
+          <option value="CREATE" {% if action == 'CREATE' %}selected{% endif %}>Crear</option>
+          <option value="UPDATE" {% if action == 'UPDATE' %}selected{% endif %}>Actualizar</option>
+          <option value="DELETE" {% if action == 'DELETE' %}selected{% endif %}>Eliminar</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">Usuario</label>
+        <select name="user" class="form-select">
+          <option value="">Todos</option>
+          {% for user in users %}
+            <option value="{{ user.user__id }}" {% if user_id == user.user__id|stringformat:'s' %}selected{% endif %}>
+              {{ user.user__username }} ({{ user.user__first_name }} {{ user.user__last_name }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">Modelo</label>
+        <select name="model" class="form-select">
+          <option value="">Todos</option>
+          {% for model in model_types %}
+            <option value="{{ model.model }}" {% if model_type == model.model %}selected{% endif %}>
+              {{ model.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Fecha desde</label>
+        <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Fecha hasta</label>
+        <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">&nbsp;</label>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-fill">
+            <i class="fa fa-search me-1"></i>Filtrar
+          </button>
+          <a href="{% url 'audit_log' %}" class="btn btn-outline-secondary">
+            <i class="fa fa-times me-1"></i>Limpiar
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <!-- Tabla de registros -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Modelo</th>
+            <th>Objeto</th>
+            <th>Cambios</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in page_obj %}
+          <tr>
+            <td>
+              <small class="text-muted">{{ log.timestamp|date:"d/m/Y H:i:s" }}</small>
+            </td>
+            <td>
+              {% if log.user %}
+                <strong>{{ log.user.get_full_name|default:log.user.username }}</strong>
+              {% else %}
+                <em class="text-muted">Sistema</em>
+              {% endif %}
+            </td>
+            <td>
+              {% if log.action == 'CREATE' %}
+                <span class="badge bg-success">Crear</span>
+              {% elif log.action == 'UPDATE' %}
+                <span class="badge bg-primary">Actualizar</span>
+              {% elif log.action == 'DELETE' %}
+                <span class="badge bg-danger">Eliminar</span>
+              {% endif %}
+            </td>
+            <td>
+              <code>{{ log.content_type.name }}</code>
+            </td>
+            <td>
+              <small>{{ log.object_repr|truncatechars:50 }}</small>
+            </td>
+            <td>
+              {% if log.changes %}
+                <button class="btn btn-sm btn-outline-info" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#changes-{{ log.id }}"
+                        aria-expanded="false">
+                  <i class="fa fa-eye me-1"></i>Ver cambios
+                </button>
+              {% else %}
+                <em class="text-muted">-</em>
+              {% endif %}
+            </td>
+          </tr>
+          {% if log.changes %}
+          <tr>
+            <td colspan="6" class="p-0">
+              <div class="collapse" id="changes-{{ log.id }}">
+                <div class="card card-body m-2 bg-light">
+                  <h6 class="card-title">Cambios realizados:</h6>
+                  <pre class="mb-0 small">{{ log.changes|safe }}</pre>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-4">
+              <i class="fa fa-inbox fa-2x text-muted mb-2"></i>
+              <br>
+              <strong>No se encontraron registros de auditoría</strong>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Navegación de auditoría" class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if action %}action={{ action }}&{% endif %}{% if user_id %}user={{ user_id }}&{% endif %}{% if model_type %}model={{ model_type }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page=1">
+            <i class="fa fa-angle-double-left"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if action %}action={{ action }}&{% endif %}{% if user_id %}user={{ user_id }}&{% endif %}{% if model_type %}model={{ model_type }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ page_obj.previous_page_number }}">
+            <i class="fa fa-angle-left"></i>
+          </a>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+          <li class="page-item active">
+            <span class="page-link">{{ num }}</span>
+          </li>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <li class="page-item">
+            <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if action %}action={{ action }}&{% endif %}{% if user_id %}user={{ user_id }}&{% endif %}{% if model_type %}model={{ model_type }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ num }}">{{ num }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if action %}action={{ action }}&{% endif %}{% if user_id %}user={{ user_id }}&{% endif %}{% if model_type %}model={{ model_type }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ page_obj.next_page_number }}">
+            <i class="fa fa-angle-right"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if action %}action={{ action }}&{% endif %}{% if user_id %}user={{ user_id }}&{% endif %}{% if model_type %}model={{ model_type }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}page={{ page_obj.paginator.num_pages }}">
+            <i class="fa fa-angle-double-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Información de paginación -->
+    <div class="text-center text-muted mt-3">
+      <small>
+        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
+      </small>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  // Mejorar la experiencia de usuario con tooltips
+  $('[data-bs-toggle="collapse"]').tooltip({
+    title: 'Click para ver detalles',
+    placement: 'top'
+  });
+});
+</script>
+{% endblock %}

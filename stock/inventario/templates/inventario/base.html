@@ -95,6 +95,7 @@
             <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="fa-solid fa-key me-2"></i>Cambiar contraseña</a></li>
             {% if user.is_superuser or user.is_staff %}
             <li><a class="dropdown-item" href="/admin/"><i class="fa-solid fa-shield-halved me-2"></i>Admin</a></li>
+            <li><a class="dropdown-item" href="{% url 'audit_log' %}"><i class="fa-solid fa-history me-2"></i>Auditoría</a></li>
             {% endif %}
             <li><hr class="dropdown-divider"></li>
             <li>

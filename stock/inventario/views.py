@@ -1,5 +1,5 @@
 
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse, HttpResponse
 from django import forms
@@ -1569,3 +1569,81 @@ def remito_pdf(request, pk):
 def remito_print(request, pk):
     entrega = get_object_or_404(Entrega, pk=pk)
     return render(request, 'inventario/remito_pdf.html', {'entrega': entrega, 'imprimir': True})
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def audit_log_list(request):
+    """Vista para listar registros de auditoría - Solo para administradores"""
+    from .models import AuditLog
+    from django.core.paginator import Paginator, EmptyPage
+    from django.db.models import Q
+
+    # Filtros
+    q = request.GET.get('q', '').strip()
+    action = request.GET.get('action', '')
+    user_id = request.GET.get('user', '')
+    model_type = request.GET.get('model', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
+
+    logs = AuditLog.objects.select_related('user', 'content_type').all()
+
+    # Aplicar filtros
+    if q:
+        logs = logs.filter(
+            Q(object_repr__icontains=q) |
+            Q(user__username__icontains=q) |
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q)
+        )
+
+    if action:
+        logs = logs.filter(action=action)
+
+    if user_id:
+        logs = logs.filter(user_id=user_id)
+
+    if model_type:
+        logs = logs.filter(content_type__model=model_type)
+
+    if fecha_desde:
+        logs = logs.filter(timestamp__date__gte=fecha_desde)
+
+    if fecha_hasta:
+        logs = logs.filter(timestamp__date__lte=fecha_hasta)
+
+    # Paginación
+    paginator = Paginator(logs.order_by('-timestamp'), 50)
+    page_number = request.GET.get('page')
+    try:
+        page_number_int = int(page_number) if page_number else 1
+    except (TypeError, ValueError):
+        page_number_int = 1
+    if page_number_int < 1:
+        page_number_int = 1
+    if page_number_int > paginator.num_pages and paginator.num_pages > 0:
+        page_number_int = paginator.num_pages
+    try:
+        page_obj = paginator.page(page_number_int)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    # Datos para filtros
+    from django.contrib.contenttypes.models import ContentType
+    users = AuditLog.objects.values('user__id', 'user__username', 'user__first_name', 'user__last_name').distinct().order_by('user__username')
+    content_type_ids = AuditLog.objects.values_list('content_type', flat=True).distinct()
+    model_types = ContentType.objects.filter(id__in=content_type_ids).order_by('app_label', 'model')
+
+    context = {
+        'page_obj': page_obj,
+        'q': q,
+        'action': action,
+        'user_id': user_id,
+        'model_type': model_type,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'users': users,
+        'model_types': model_types,
+    }
+
+    return render(request, 'inventario/audit_log.html', context)

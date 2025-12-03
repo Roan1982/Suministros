@@ -1,5 +1,36 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.utils import timezone
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('CREATE', 'Crear'),
+        ('UPDATE', 'Actualizar'),
+        ('DELETE', 'Eliminar'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuario")
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES, verbose_name="Acción")
+    timestamp = models.DateTimeField(default=timezone.now, verbose_name="Fecha y hora")
+
+    # Campos para el objeto afectado
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # Información adicional
+    object_repr = models.CharField(max_length=200, verbose_name="Representación del objeto")
+    changes = models.JSONField(null=True, blank=True, verbose_name="Cambios realizados")
+
+    class Meta:
+        verbose_name = "Registro de Auditoría"
+        verbose_name_plural = "Registros de Auditoría"
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user} - {self.action} - {self.object_repr} - {self.timestamp}"
 
 class Rubro(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
