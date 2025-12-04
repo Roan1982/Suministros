@@ -230,6 +230,24 @@
             </div>
             {% endif %}
 
+            <!-- Expediente de Contratación -->
+            {% if servicio.expediente_contratacion %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-alt text-info"></i> Expediente de Contratación
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">{{ servicio.expediente_contratacion }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Vencimientos y Pagos -->
             {% if servicio.frecuencia == 'MENSUAL' or servicio.frecuencia == 'QUINCENAL' and pagos_por_anio %}
             <div class="row mt-4">

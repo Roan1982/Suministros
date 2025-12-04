@@ -1282,7 +1282,7 @@ class ServicioForm(forms.ModelForm):
     class Meta:
         model = Servicio
         fields = ['nombre', 'descripcion', 'proveedor', 'frecuencia', 'costo_mensual', 
-                 'fecha_inicio', 'fecha_fin', 'estado', 'rubro', 'observaciones']
+                 'fecha_inicio', 'fecha_fin', 'estado', 'rubro', 'observaciones', 'expediente_contratacion']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -1292,6 +1292,7 @@ class ServicioForm(forms.ModelForm):
             'estado': forms.Select(attrs={'class': 'form-control'}),
             'rubro': forms.Select(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'expediente_contratacion': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):

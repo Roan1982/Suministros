@@ -119,6 +119,7 @@ class Servicio(models.Model):
     estado = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='ACTIVO', verbose_name="Estado")
     rubro = models.ForeignKey(Rubro, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Rubro")
     observaciones = models.TextField(blank=True, verbose_name="Observaciones")
+    expediente_contratacion = models.CharField(max_length=100, blank=True, verbose_name="Expediente de contratación")
 
     def save(self, *args, **kwargs):
         if self.nombre:
@@ -129,6 +130,8 @@ class Servicio(models.Model):
             self.descripcion = self.descripcion.upper()
         if self.observaciones:
             self.observaciones = self.observaciones.upper()
+        if self.expediente_contratacion:
+            self.expediente_contratacion = self.expediente_contratacion.upper()
         super().save(*args, **kwargs)
 
     def calcular_proxima_renovacion(self):
