@@ -1,12 +1,12 @@
 {% extends 'inventario/base.html' %}
 {% load form_extras %}
-{% block title %}Servicios con Pagos Pendientes{% endblock %}
+{% block title %}Pagos Pendientes{% endblock %}
 
 {% block content %}
 <div class="card mt-5 w-100">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h3 class="mb-0"><i class="fa-solid fa-exclamation-triangle text-warning"></i> Servicios con Pagos Pendientes por Frecuencia</h3>
+      <h3 class="mb-0"><i class="fa-solid fa-exclamation-triangle text-warning"></i> Pagos Pendientes por Servicio</h3>
       <div class="btn-group">
         <a href="{% url 'reportes' %}" class="btn btn-outline-secondary">
           <i class="fa fa-arrow-left me-1"></i>Volver
@@ -20,19 +20,42 @@
       </div>
     </div>
 
+    <!-- Resumen por frecuencia -->
+    {% if resumen_por_frecuencia %}
+    <div class="row mb-4">
+      {% for freq, resumen in resumen_por_frecuencia.items %}
+      <div class="col-md-4">
+        <div class="card border-warning">
+          <div class="card-body text-center">
+            <h5 class="card-title text-warning">{{ resumen.display }}</h5>
+            <p class="card-text">
+              <strong>{{ resumen.cantidad }}</strong> pagos pendientes<br>
+              <strong>${{ resumen.monto|floatformat:2 }}</strong> total mensual
+            </p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Tabla de resultados -->
     <div class="table-responsive">
       <table class="table table-striped table-hover">
         <thead class="table-dark">
           <tr>
+            <th>Servicio</th>
+            <th>Proveedor</th>
             <th>Frecuencia</th>
-            <th>Cantidad de Servicios</th>
-            <th>Costo Total Mensual</th>
+            <th>Fecha de Vencimiento</th>
+            <th>Monto Mensual</th>
           </tr>
         </thead>
         <tbody>
           {% for item in data %}
           <tr>
+            <td>{{ item.servicio }}</td>
+            <td>{{ item.proveedor }}</td>
             <td>
               {% if item.frecuencia == 'MENSUAL' %}
                 <span class="badge bg-primary">Mensual</span>
@@ -42,19 +65,18 @@
                 <span class="badge bg-secondary">Semanal</span>
               {% endif %}
             </td>
-            <td class="text-center fw-bold">{{ item.cantidad }}</td>
-            <td class="text-end fw-bold text-danger">${{ item.costo_total|floatformat:2 }}</td>
+            <td>{{ item.fecha_vencimiento|date:"d/m/Y" }}</td>
+            <td class="text-end fw-bold text-danger">${{ item.monto|floatformat:2 }}</td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="3" class="text-center text-muted">No hay servicios con pagos pendientes.</td>
+            <td colspan="5" class="text-center text-muted">No hay pagos pendientes.</td>
           </tr>
           {% endfor %}
           {% if data %}
           <tr class="table-dark">
-            <td class="fw-bold">Total</td>
-            <td class="text-center fw-bold">{{ total_cantidad }}</td>
-            <td class="text-end fw-bold text-danger">${{ total_costo|floatformat:2 }}</td>
+            <td colspan="4" class="fw-bold">Total</td>
+            <td class="text-end fw-bold text-danger">${{ total_monto|floatformat:2 }}</td>
           </tr>
           {% endif %}
         </tbody>

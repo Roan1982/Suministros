@@ -2460,9 +2460,9 @@ def reporte_costos_servicios(request):
 
 @login_required
 def reporte_servicios_pendientes(request):
-    """Reporte de servicios con pagos pendientes hasta la fecha actual, agrupados por frecuencia"""
+    """Reporte de pagos pendientes hasta la fecha actual, detallados por servicio y frecuencia"""
     from .models import Servicio, ServicioPago
-    from django.db.models import Count, Sum
+    from django.db.models import Q
     from datetime import date
     import pandas as pd
     from django.http import HttpResponse
@@ -2473,57 +2473,73 @@ def reporte_servicios_pendientes(request):
 
     hoy = date.today()
     
-    # Servicios con pagos pendientes hasta hoy, agrupados por frecuencia
-    servicios_pendientes = Servicio.objects.filter(
-        pagos__estado='PENDIENTE', 
-        pagos__fecha_vencimiento__lte=hoy
-    ).distinct().values('frecuencia').annotate(
-        cantidad=Count('id'),
-        costo_total=Sum('costo_mensual')
-    ).order_by('frecuencia')
+    # Pagos pendientes hasta hoy
+    pagos_pendientes = ServicioPago.objects.filter(
+        estado='PENDIENTE',
+        fecha_vencimiento__lte=hoy
+    ).select_related('servicio').order_by('servicio__frecuencia', 'servicio__nombre', 'fecha_vencimiento')
 
     data = []
     excel_rows = []
     total_cantidad = 0
-    total_costo = 0
+    total_monto = 0
     
-    for row in servicios_pendientes:
-        frecuencia_display = dict(Servicio.FRECUENCIA_CHOICES).get(row['frecuencia'], row['frecuencia'])
-        costo_total = float(row['costo_total'] or 0)
+    for pago in pagos_pendientes:
+        frecuencia_display = dict(Servicio.FRECUENCIA_CHOICES).get(pago.servicio.frecuencia, pago.servicio.frecuencia)
+        monto = float(pago.servicio.costo_mensual)
         data.append({
-            'frecuencia': row['frecuencia'],
+            'servicio': pago.servicio.nombre,
+            'proveedor': pago.servicio.proveedor,
+            'frecuencia': pago.servicio.frecuencia,
             'frecuencia_display': frecuencia_display,
-            'cantidad': row['cantidad'],
-            'costo_total': costo_total,
+            'fecha_vencimiento': pago.fecha_vencimiento,
+            'monto': monto,
         })
-        total_cantidad += row['cantidad']
-        total_costo += costo_total
+        total_cantidad += 1
+        total_monto += monto
         
         excel_rows.append({
+            'Servicio': pago.servicio.nombre,
+            'Proveedor': pago.servicio.proveedor,
             'Frecuencia': frecuencia_display,
-            'Cantidad de Servicios': row['cantidad'],
-            'Costo Total Mensual ($)': costo_total,
+            'Fecha Vencimiento': pago.fecha_vencimiento.strftime('%d/%m/%Y'),
+            'Monto Mensual ($)': monto,
         })
+
+    # Agrupar por frecuencia para resumen
+    resumen_por_frecuencia = {}
+    for item in data:
+        freq = item['frecuencia']
+        if freq not in resumen_por_frecuencia:
+            resumen_por_frecuencia[freq] = {'cantidad': 0, 'monto': 0, 'display': item['frecuencia_display']}
+        resumen_por_frecuencia[freq]['cantidad'] += 1
+        resumen_por_frecuencia[freq]['monto'] += item['monto']
 
     if request.GET.get('export') == 'excel':
         df = pd.DataFrame(excel_rows)
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=servicios_pendientes.xlsx'
+        response['Content-Disposition'] = 'attachment; filename=pagos_pendientes.xlsx'
         df.to_excel(response, index=False)
         return response
 
     if request.GET.get('export') == 'pdf':
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename=servicios_pendientes.pdf'
+        response['Content-Disposition'] = 'attachment; filename=pagos_pendientes.pdf'
         doc = SimpleDocTemplate(response, pagesize=letter)
         elements = []
         styles = getSampleStyleSheet()
-        elements.append(Paragraph('Servicios con Pagos Pendientes por Frecuencia', styles['Title']))
+        elements.append(Paragraph('Pagos Pendientes por Servicio', styles['Title']))
         elements.append(Spacer(1, 12))
-        table_data = [["Frecuencia", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
-        for row in data:
-            table_data.append([row['frecuencia_display'], row['cantidad'], f"${row['costo_total']:.2f}"])
-        table_data.append(["Total", total_cantidad, f"${total_costo:.2f}"])
+        table_data = [["Servicio", "Proveedor", "Frecuencia", "Fecha Vencimiento", "Monto Mensual ($)"]]
+        for item in data:
+            table_data.append([
+                item['servicio'], 
+                item['proveedor'], 
+                item['frecuencia_display'], 
+                item['fecha_vencimiento'].strftime('%d/%m/%Y'), 
+                f"${item['monto']:.2f}"
+            ])
+        table_data.append(["Total", "", "", "", f"${total_monto:.2f}"])
         t = Table(table_data)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -2541,6 +2557,7 @@ def reporte_servicios_pendientes(request):
 
     return render(request, 'inventario/reporte_servicios_pendientes.html', {
         'data': data,
+        'resumen_por_frecuencia': resumen_por_frecuencia,
         'total_cantidad': total_cantidad,
-        'total_costo': total_costo,
+        'total_monto': total_monto,
     })
