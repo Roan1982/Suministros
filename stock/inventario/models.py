@@ -203,9 +203,6 @@ class Servicio(models.Model):
         
     def generar_pagos_mensuales(self):
         """Genera pagos mensuales para servicios mensuales y quincenales"""
-        if not self.fecha_fin:
-            return
-        
         from dateutil.relativedelta import relativedelta
         from datetime import date
         
@@ -213,6 +210,9 @@ class Servicio(models.Model):
         # self.pagos.all().delete()
         
         if self.frecuencia == 'MENSUAL':
+            if not self.fecha_fin:
+                return  # No generar pagos si no hay fecha fin para mensuales
+            
             fecha_actual = self.fecha_inicio
             while fecha_actual <= self.fecha_fin:
                 # Crear pago si no existe
@@ -227,11 +227,14 @@ class Servicio(models.Model):
         
         elif self.frecuencia == 'QUINCENAL':
             # Generar pagos el día 1 y 16 de cada mes
+            # Si no hay fecha_fin, generar pagos hasta 12 meses en el futuro
+            fecha_limite = self.fecha_fin if self.fecha_fin else date.today() + relativedelta(months=12)
+            
             fecha_actual = self.fecha_inicio
-            while fecha_actual <= self.fecha_fin:
+            while fecha_actual <= fecha_limite:
                 # Pago del día 1 del mes
                 fecha_pago_1 = fecha_actual.replace(day=1)
-                if fecha_pago_1 >= self.fecha_inicio and fecha_pago_1 <= self.fecha_fin:
+                if fecha_pago_1 >= self.fecha_inicio and fecha_pago_1 <= fecha_limite:
                     if not self.pagos.filter(fecha_vencimiento=fecha_pago_1).exists():
                         ServicioPago.objects.create(
                             servicio=self,
@@ -241,7 +244,7 @@ class Servicio(models.Model):
                 
                 # Pago del día 16 del mes
                 fecha_pago_16 = fecha_actual.replace(day=16)
-                if fecha_pago_16 >= self.fecha_inicio and fecha_pago_16 <= self.fecha_fin:
+                if fecha_pago_16 >= self.fecha_inicio and fecha_pago_16 <= fecha_limite:
                     if not self.pagos.filter(fecha_vencimiento=fecha_pago_16).exists():
                         ServicioPago.objects.create(
                             servicio=self,
