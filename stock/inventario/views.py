@@ -2024,9 +2024,7 @@ def servicio_detalle(request, pk):
     
     return render(request, 'inventario/servicio_detalle.html', {
         'servicio': servicio,
-        'pagos_por_anio': pagos_por_anio,
-        'mes_actual': mes_actual,
-        'mes_siguiente': mes_siguiente
+        'pagos_por_anio': pagos_por_anio
     })
 
 @login_required
