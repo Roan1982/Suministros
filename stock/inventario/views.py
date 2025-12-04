@@ -2457,3 +2457,90 @@ def reporte_costos_servicios(request):
         'costo_mensual_total': costo_mensual_total,
         'costo_anual_total': costo_anual_total,
     })
+
+@login_required
+def reporte_servicios_pendientes(request):
+    """Reporte de servicios con pagos pendientes hasta la fecha actual, agrupados por frecuencia"""
+    from .models import Servicio, ServicioPago
+    from django.db.models import Count, Sum
+    from datetime import date
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    hoy = date.today()
+    
+    # Servicios con pagos pendientes hasta hoy, agrupados por frecuencia
+    servicios_pendientes = Servicio.objects.filter(
+        pagos__estado='PENDIENTE', 
+        pagos__fecha_vencimiento__lte=hoy
+    ).distinct().values('frecuencia').annotate(
+        cantidad=Count('id'),
+        costo_total=Sum('costo_mensual')
+    ).order_by('frecuencia')
+
+    data = []
+    excel_rows = []
+    total_cantidad = 0
+    total_costo = 0
+    
+    for row in servicios_pendientes:
+        frecuencia_display = dict(Servicio.FRECUENCIA_CHOICES).get(row['frecuencia'], row['frecuencia'])
+        costo_total = float(row['costo_total'] or 0)
+        data.append({
+            'frecuencia': row['frecuencia'],
+            'frecuencia_display': frecuencia_display,
+            'cantidad': row['cantidad'],
+            'costo_total': costo_total,
+        })
+        total_cantidad += row['cantidad']
+        total_costo += costo_total
+        
+        excel_rows.append({
+            'Frecuencia': frecuencia_display,
+            'Cantidad de Servicios': row['cantidad'],
+            'Costo Total Mensual ($)': costo_total,
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=servicios_pendientes.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=servicios_pendientes.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Servicios con Pagos Pendientes por Frecuencia', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Frecuencia", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
+        for row in data:
+            table_data.append([row['frecuencia_display'], row['cantidad'], f"${row['costo_total']:.2f}"])
+        table_data.append(["Total", total_cantidad, f"${total_costo:.2f}"])
+        t = Table(table_data)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_servicios_pendientes.html', {
+        'data': data,
+        'total_cantidad': total_cantidad,
+        'total_costo': total_costo,
+    })
