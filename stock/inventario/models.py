@@ -190,9 +190,11 @@ class Servicio(models.Model):
             return self.costo_mensual * Decimal(max(1, meses))
         
         elif self.frecuencia == 'QUINCENAL':
-            # Número de quincenas (15 días)
-            quincenas = Decimal(dias_totales) / Decimal(15)
-            return self.costo_mensual * max(Decimal(1), quincenas)
+            # Máximo 2 pagos por mes (día 1 y 16)
+            meses = delta.years * 12 + delta.months
+            if delta.days > 0:  # Si hay días adicionales, contar como un mes más
+                meses += 1
+            return self.costo_mensual * Decimal(max(1, meses)) * Decimal(2)
         
         elif self.frecuencia == 'SEMANAL':
             # Número de semanas (7 días)
@@ -200,8 +202,8 @@ class Servicio(models.Model):
             return self.costo_mensual * max(Decimal(1), semanas)
         
     def generar_pagos_mensuales(self):
-        """Genera pagos mensuales para servicios mensuales"""
-        if self.frecuencia != 'MENSUAL' or not self.fecha_fin:
+        """Genera pagos mensuales para servicios mensuales y quincenales"""
+        if not self.fecha_fin:
             return
         
         from dateutil.relativedelta import relativedelta
@@ -210,17 +212,45 @@ class Servicio(models.Model):
         # Eliminar pagos existentes si es necesario (opcional)
         # self.pagos.all().delete()
         
-        fecha_actual = self.fecha_inicio
-        while fecha_actual <= self.fecha_fin:
-            # Crear pago si no existe
-            if not self.pagos.filter(fecha_vencimiento=fecha_actual).exists():
-                ServicioPago.objects.create(
-                    servicio=self,
-                    fecha_vencimiento=fecha_actual,
-                    estado='PENDIENTE'
-                )
-            # Avanzar al siguiente mes
-            fecha_actual += relativedelta(months=1)
+        if self.frecuencia == 'MENSUAL':
+            fecha_actual = self.fecha_inicio
+            while fecha_actual <= self.fecha_fin:
+                # Crear pago si no existe
+                if not self.pagos.filter(fecha_vencimiento=fecha_actual).exists():
+                    ServicioPago.objects.create(
+                        servicio=self,
+                        fecha_vencimiento=fecha_actual,
+                        estado='PENDIENTE'
+                    )
+                # Avanzar al siguiente mes
+                fecha_actual += relativedelta(months=1)
+        
+        elif self.frecuencia == 'QUINCENAL':
+            # Generar pagos el día 1 y 16 de cada mes
+            fecha_actual = self.fecha_inicio
+            while fecha_actual <= self.fecha_fin:
+                # Pago del día 1 del mes
+                fecha_pago_1 = fecha_actual.replace(day=1)
+                if fecha_pago_1 >= self.fecha_inicio and fecha_pago_1 <= self.fecha_fin:
+                    if not self.pagos.filter(fecha_vencimiento=fecha_pago_1).exists():
+                        ServicioPago.objects.create(
+                            servicio=self,
+                            fecha_vencimiento=fecha_pago_1,
+                            estado='PENDIENTE'
+                        )
+                
+                # Pago del día 16 del mes
+                fecha_pago_16 = fecha_actual.replace(day=16)
+                if fecha_pago_16 >= self.fecha_inicio and fecha_pago_16 <= self.fecha_fin:
+                    if not self.pagos.filter(fecha_vencimiento=fecha_pago_16).exists():
+                        ServicioPago.objects.create(
+                            servicio=self,
+                            fecha_vencimiento=fecha_pago_16,
+                            estado='PENDIENTE'
+                        )
+                
+                # Avanzar al siguiente mes
+                fecha_actual += relativedelta(months=1)
 
     def __str__(self):
         return f"{self.nombre} - {self.proveedor} ({self.get_frecuencia_display()})"
