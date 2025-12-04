@@ -1989,15 +1989,43 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales si no existen
-    if servicio.frecuencia == 'MENSUAL' and servicio.fecha_fin:
-        servicio.generar_pagos_mensuales()
+    # Generar pagos mensuales si no existen (desde el mes actual hasta 2 años adelante)
+    if servicio.frecuencia == 'MENSUAL':
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        
+        hoy = date.today()
+        fecha_limite = hoy + relativedelta(years=2)  # Generar pagos hasta 2 años adelante
+        
+        # Si tiene fecha_fin, usar la menor entre fecha_fin y fecha_limite
+        if servicio.fecha_fin:
+            fecha_limite = min(servicio.fecha_fin, fecha_limite)
+        
+        # Generar pagos desde el mes actual hasta fecha_limite
+        fecha_actual = hoy.replace(day=1)  # Primer día del mes actual
+        while fecha_actual <= fecha_limite:
+            if not servicio.pagos.filter(fecha_vencimiento=fecha_actual).exists():
+                ServicioPago.objects.create(
+                    servicio=servicio,
+                    fecha_vencimiento=fecha_actual,
+                    estado='PENDIENTE'
+                )
+            fecha_actual += relativedelta(months=1)
     
-    pagos = servicio.pagos.all().order_by('fecha_vencimiento')
+    # Agrupar pagos por año
+    pagos_por_anio = {}
+    for pago in servicio.pagos.all().order_by('fecha_vencimiento'):
+        anio = pago.fecha_vencimiento.year
+        if anio not in pagos_por_anio:
+            pagos_por_anio[anio] = []
+        pagos_por_anio[anio].append(pago)
+    
+    # Ordenar años
+    pagos_por_anio = dict(sorted(pagos_por_anio.items()))
     
     return render(request, 'inventario/servicio_detalle.html', {
         'servicio': servicio,
-        'pagos': pagos
+        'pagos_por_anio': pagos_por_anio
     })
 
 @login_required

@@ -231,7 +231,7 @@
             {% endif %}
 
             <!-- Vencimientos y Pagos -->
-            {% if servicio.frecuencia == 'MENSUAL' and pagos %}
+            {% if servicio.frecuencia == 'MENSUAL' and pagos_por_anio %}
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="card shadow-sm">
@@ -241,60 +241,67 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div id="accordionPagos">
-                                {% for pago in pagos %}
-                                <div class="card mb-2">
-                                    <div class="card-header" id="heading{{ pago.id }}">
-                                        <h5 class="mb-0">
-                                            <button class="btn btn-link collapsed" data-bs-toggle="collapse" data-bs-target="#collapse{{ pago.id }}" aria-expanded="false" aria-controls="collapse{{ pago.id }}">
-                                                <i class="fas fa-calendar-day"></i> {{ pago.fecha_vencimiento|date:"F Y" }}
-                                                {% if pago.estado == 'PENDIENTE' %}
-                                                    <span class="badge badge-warning-custom badge-lg font-weight-bold">
-                                                        <i class="fas fa-clock"></i> Pendiente
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge badge-success-custom badge-lg font-weight-bold">
-                                                        <i class="fas fa-check-circle"></i> Pagado
-                                                    </span>
-                                                {% endif %}
-                                            </button>
-                                        </h5>
-                                    </div>
-                                    <div id="collapse{{ pago.id }}" class="collapse" aria-labelledby="heading{{ pago.id }}" data-bs-parent="#accordionPagos">
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <p><strong>Fecha de vencimiento:</strong> {{ pago.fecha_vencimiento|date:"d/m/Y" }}</p>
-                                                    <p><strong>Estado:</strong> 
-                                                        {% if pago.estado == 'PENDIENTE' %}
-                                                            <span class="badge badge-warning-custom badge-lg font-weight-bold">
-                                                                <i class="fas fa-clock"></i> Pendiente
-                                                            </span>
-                                                        {% else %}
-                                                            <span class="badge badge-success-custom badge-lg font-weight-bold">
-                                                                <i class="fas fa-check-circle"></i> Pagado
-                                                            </span>
-                                                        {% endif %}
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    {% if pago.estado == 'PAGADO' %}
-                                                        <p><strong>Expediente de pago:</strong> {{ pago.expediente_pago|default:"-" }}</p>
-                                                        <p><strong>Fecha de pago:</strong> {{ pago.fecha_pago|date:"d/m/Y"|default:"-" }}</p>
-                                                        <p><strong>Importe pagado:</strong> ${{ pago.importe_pago|floatformat:2 }}</p>
+                            {% for anio, pagos_anio in pagos_por_anio.items %}
+                            <div class="mb-4">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-calendar-year"></i> {{ anio }}
+                                </h6>
+                                <div id="accordion{{ anio }}">
+                                    {% for pago in pagos_anio %}
+                                    <div class="card mb-2">
+                                        <div class="card-header" id="heading{{ pago.id }}">
+                                            <h5 class="mb-0">
+                                                <button class="btn btn-link collapsed" data-bs-toggle="collapse" data-bs-target="#collapse{{ pago.id }}" aria-expanded="false" aria-controls="collapse{{ pago.id }}">
+                                                    <i class="fas fa-calendar-day"></i> {{ pago.fecha_vencimiento|date:"F Y" }}
+                                                    {% if pago.estado == 'PENDIENTE' %}
+                                                        <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                                            <i class="fas fa-clock"></i> Pendiente
+                                                        </span>
                                                     {% else %}
-                                                        <p><strong>Importe esperado:</strong> ${{ servicio.costo_mensual|floatformat:2 }}</p>
-                                                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago{{ pago.id }}">
-                                                            <i class="fas fa-check"></i> Marcar como Pagado
-                                                        </button>
+                                                        <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                                            <i class="fas fa-check-circle"></i> Pagado
+                                                        </span>
                                                     {% endif %}
+                                                </button>
+                                            </h5>
+                                        </div>
+                                        <div id="collapse{{ pago.id }}" class="collapse" aria-labelledby="heading{{ pago.id }}" data-bs-parent="#accordion{{ anio }}">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <p><strong>Fecha de vencimiento:</strong> {{ pago.fecha_vencimiento|date:"d/m/Y" }}</p>
+                                                        <p><strong>Estado:</strong> 
+                                                            {% if pago.estado == 'PENDIENTE' %}
+                                                                <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                                                    <i class="fas fa-clock"></i> Pendiente
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                                                    <i class="fas fa-check-circle"></i> Pagado
+                                                                </span>
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        {% if pago.estado == 'PAGADO' %}
+                                                            <p><strong>Expediente de pago:</strong> {{ pago.expediente_pago|default:"-" }}</p>
+                                                            <p><strong>Fecha de pago:</strong> {{ pago.fecha_pago|date:"d/m/Y"|default:"-" }}</p>
+                                                            <p><strong>Importe pagado:</strong> ${{ pago.importe_pago|floatformat:2 }}</p>
+                                                        {% else %}
+                                                            <p><strong>Importe esperado:</strong> ${{ servicio.costo_mensual|floatformat:2 }}</p>
+                                                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago{{ pago.id }}">
+                                                                <i class="fas fa-check"></i> Marcar como Pagado
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
                             </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
