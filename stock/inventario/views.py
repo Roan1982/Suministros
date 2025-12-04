@@ -4,6 +4,7 @@ from django.db.models import Q, Sum, F
 from django.http import JsonResponse, HttpResponse
 from django import forms
 from django.forms import inlineformset_factory
+from django.contrib.contenttypes.models import ContentType
 from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio, ServicioPago, AuditLog
 from django.contrib import messages
 from django.template.loader import get_template
@@ -1887,7 +1888,6 @@ def audit_log_list(request):
         page_obj = paginator.page(1)
 
     # Datos para filtros
-    from django.contrib.contenttypes.models import ContentType
     users = AuditLog.objects.values('user__id', 'user__username', 'user__first_name', 'user__last_name').distinct().order_by('user__username')
     content_type_ids = AuditLog.objects.values_list('content_type', flat=True).distinct()
     model_types = ContentType.objects.filter(id__in=content_type_ids).order_by('app_label', 'model')
@@ -2591,12 +2591,20 @@ def realizar_pago(request, pago_id):
             pago.estado = 'pagado'
             pago.save()
             # Log de auditoría
+            content_type = ContentType.objects.get_for_model(pago)
+            changes = {
+                'estado': ['pendiente', 'pagado'],
+                'fecha_pago': [None, fecha_pago],
+                'importe_pago': [None, importe_pago],
+                'expediente_pago': [pago.expediente_pago, expediente_pago or '']
+            }
             AuditLog.objects.create(
                 user=request.user,
-                action='Pago realizado',
-                model_name='ServicioPago',
+                action='UPDATE',
+                content_type=content_type,
                 object_id=pago.id,
-                details=f'Pago realizado para servicio {pago.servicio.nombre} - Fecha: {fecha_pago}, Importe: {importe_pago}'
+                object_repr=str(pago),
+                changes=changes
             )
             messages.success(request, f'Pago realizado exitosamente para {pago.servicio.nombre}.')
         else:
