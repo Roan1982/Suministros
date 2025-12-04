@@ -4,7 +4,7 @@ from django.db.models import Q, Sum, F
 from django.http import JsonResponse, HttpResponse
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio, ServicioPago
+from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio, ServicioPago, AuditLog
 from django.contrib import messages
 from django.template.loader import get_template
 from xhtml2pdf import pisa
@@ -1824,7 +1824,6 @@ def remito_print(request, pk):
 @user_passes_test(lambda u: u.is_staff)
 def audit_log_list(request):
     """Vista para listar registros de auditoría - Solo para administradores"""
-    from .models import AuditLog
     from django.core.paginator import Paginator, EmptyPage
     from django.db.models import Q
 
