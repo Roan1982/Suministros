@@ -1989,18 +1989,24 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales históricos hasta enero 2026
-    if servicio.frecuencia == 'MENSUAL' and servicio.fecha_inicio:
+    # Generar pagos históricos hasta el mes actual
+    if servicio.frecuencia in ['MENSUAL', 'QUINCENAL'] and servicio.fecha_inicio:
         from datetime import date
         from dateutil.relativedelta import relativedelta
         
         hoy = date.today()
         mes_actual = hoy.replace(day=1)  # Primer día del mes actual
         
-        fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
-        fecha_limite = min(mes_actual, date(2026, 1, 1))  # Hasta enero 2026
+        if servicio.frecuencia == 'MENSUAL':
+            fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
+            fecha_limite = mes_actual  # Solo hasta el mes actual
+            delta = relativedelta(months=1)
+        elif servicio.frecuencia == 'QUINCENAL':
+            fecha_actual = servicio.fecha_inicio
+            fecha_limite = hoy + relativedelta(days=15)  # Hasta hoy + 15 días para incluir el próximo
+            delta = relativedelta(days=15)
         
-        # Si el servicio tiene fecha_fin y es anterior a enero 2026, usar esa fecha
+        # Si el servicio tiene fecha_fin y es anterior a la fecha límite, usar esa fecha
         if servicio.fecha_fin and servicio.fecha_fin < fecha_limite:
             fecha_limite = servicio.fecha_fin
         
@@ -2011,7 +2017,7 @@ def servicio_detalle(request, pk):
                     fecha_vencimiento=fecha_actual,
                     estado='PENDIENTE'
                 )
-            fecha_actual += relativedelta(months=1)
+            fecha_actual += delta
     
     # Agrupar pagos por año
     pagos_por_anio = {}

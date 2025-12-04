@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils import timezone
+from decimal import Decimal
 
 class AuditLog(models.Model):
     ACTION_CHOICES = [
@@ -183,17 +184,17 @@ class Servicio(models.Model):
             meses = delta.years * 12 + delta.months
             if delta.days > 0:  # Si hay días adicionales, contar como un mes más
                 meses += 1
-            return self.costo_mensual * max(1, meses)
+            return self.costo_mensual * Decimal(max(1, meses))
         
         elif self.frecuencia == 'QUINCENAL':
             # Número de quincenas (15 días)
-            quincenas = dias_totales / 15
-            return self.costo_mensual * max(1, quincenas)
+            quincenas = Decimal(dias_totales) / Decimal(15)
+            return self.costo_mensual * max(Decimal(1), quincenas)
         
         elif self.frecuencia == 'SEMANAL':
             # Número de semanas (7 días)
-            semanas = dias_totales / 7
-            return self.costo_mensual * max(1, semanas)
+            semanas = Decimal(dias_totales) / Decimal(7)
+            return self.costo_mensual * max(Decimal(1), semanas)
         
     def generar_pagos_mensuales(self):
         """Genera pagos mensuales para servicios mensuales"""
