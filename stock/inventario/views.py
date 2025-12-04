@@ -1989,13 +1989,14 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales si no existen (desde el mes actual hasta 2 años adelante)
+    # Generar pagos mensuales si no existen (desde el mes actual hasta máximo 1 mes posterior)
     if servicio.frecuencia == 'MENSUAL':
         from datetime import date
         from dateutil.relativedelta import relativedelta
         
         hoy = date.today()
-        fecha_limite = hoy + relativedelta(years=2)  # Generar pagos hasta 2 años adelante
+        # Máximo 1 mes posterior al actual
+        fecha_limite = hoy.replace(day=1) + relativedelta(months=1)
         
         # Si tiene fecha_fin, usar la menor entre fecha_fin y fecha_limite
         if servicio.fecha_fin:
