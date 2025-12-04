@@ -1989,12 +1989,20 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales históricos si no existen (desde fecha_inicio hasta fecha_fin)
+    # Generar pagos mensuales históricos hasta el mes actual
     if servicio.frecuencia == 'MENSUAL' and servicio.fecha_inicio:
+        from datetime import date
         from dateutil.relativedelta import relativedelta
         
+        hoy = date.today()
+        mes_actual = hoy.replace(day=1)  # Primer día del mes actual
+        
         fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
-        fecha_limite = servicio.fecha_fin if servicio.fecha_fin else fecha_actual + relativedelta(years=10)  # Si no hay fecha_fin, generar hasta 10 años adelante
+        fecha_limite = mes_actual  # Solo hasta el mes actual
+        
+        # Si el servicio tiene fecha_fin y es anterior al mes actual, usar esa fecha
+        if servicio.fecha_fin and servicio.fecha_fin < mes_actual:
+            fecha_limite = servicio.fecha_fin
         
         while fecha_actual <= fecha_limite:
             if not servicio.pagos.filter(fecha_vencimiento=fecha_actual).exists():
@@ -2004,12 +2012,6 @@ def servicio_detalle(request, pk):
                     estado='PENDIENTE'
                 )
             fecha_actual += relativedelta(months=1)
-    
-    # Determinar qué pagos pueden ser marcados como pagados (mes actual + siguiente)
-    from datetime import date
-    hoy = date.today()
-    mes_actual = hoy.replace(day=1)
-    mes_siguiente = mes_actual + relativedelta(months=1)
     
     # Agrupar pagos por año
     pagos_por_anio = {}
