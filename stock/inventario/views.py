@@ -1989,7 +1989,7 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales históricos hasta el mes actual
+    # Generar pagos mensuales históricos hasta enero 2026
     if servicio.frecuencia == 'MENSUAL' and servicio.fecha_inicio:
         from datetime import date
         from dateutil.relativedelta import relativedelta
@@ -1998,10 +1998,10 @@ def servicio_detalle(request, pk):
         mes_actual = hoy.replace(day=1)  # Primer día del mes actual
         
         fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
-        fecha_limite = mes_actual  # Solo hasta el mes actual
+        fecha_limite = min(mes_actual, date(2026, 1, 1))  # Hasta enero 2026
         
-        # Si el servicio tiene fecha_fin y es anterior al mes actual, usar esa fecha
-        if servicio.fecha_fin and servicio.fecha_fin < mes_actual:
+        # Si el servicio tiene fecha_fin y es anterior a enero 2026, usar esa fecha
+        if servicio.fecha_fin and servicio.fecha_fin < fecha_limite:
             fecha_limite = servicio.fecha_fin
         
         while fecha_actual <= fecha_limite:
