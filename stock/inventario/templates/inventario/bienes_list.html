@@ -8,11 +8,11 @@
       <h3 class="mb-0"><i class="fa-solid fa-box"></i> Bienes</h3>
       <a href="{% url 'agregar_bien' %}" class="btn btn-success"><i class="fa-solid fa-plus"></i> Agregar Bien</a>
     </div>
-    <form method="get" class="row g-2 mb-3 align-items-end">
-      <div class="col-md-5">
+    <form method="get" class="row g-3 mb-3">
+      <div class="col-md-4">
         <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, catálogo o renglón" value="{{ q|default:'' }}">
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <select name="rubro" class="form-select select2" data-placeholder="Filtrar por rubro">
           <option value="">Todos los rubros</option>
           {% for rubro in rubros %}
@@ -20,8 +20,11 @@
           {% endfor %}
         </select>
       </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" type="submit"><i class="fas fa-search"></i> Filtrar</button>
+      </div>
       <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit"><i class="fa fa-search"></i> Buscar</button>
+        <a href="{% url 'bienes_list' %}" class="btn btn-outline-danger w-100"><i class="fas fa-times"></i> Limpiar</a>
       </div>
     </form>
     <table class="table table-striped">

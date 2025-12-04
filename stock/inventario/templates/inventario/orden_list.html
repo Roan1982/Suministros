@@ -6,10 +6,15 @@
       <h3 class="mb-0"><i class="fa-solid fa-file-contract"></i> Órdenes de Compra</h3>
       <a href="{% url 'agregar_orden' %}" class="btn btn-success"><i class="fa-solid fa-plus"></i> Nueva Orden de Compra</a>
     </div>
-    <form method="get" class="mb-3">
-        <div class="input-group" style="max-width:400px;">
+    <form method="get" class="row g-3 mb-3">
+        <div class="col-md-7">
             <input type="text" name="q" class="form-control" placeholder="Buscar por número o proveedor" value="{{ q|default:'' }}">
-            <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i> Buscar</button>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100" type="submit"><i class="fas fa-search"></i> Filtrar</button>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'ordenes' %}" class="btn btn-outline-danger w-100"><i class="fas fa-times"></i> Limpiar</a>
         </div>
     </form>
     <div class="table-responsive rounded shadow-sm">

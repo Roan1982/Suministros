@@ -6,17 +6,22 @@
       <h3 class="mb-0"><i class="fa-solid fa-file-invoice"></i> Remitos</h3>
       <a href="{% url 'crear_entrega' %}" class="btn btn-success"><i class="fa-solid fa-plus"></i> Nuevo Remito</a>
     </div>
-    <form method="get" class="mb-3">
-        <div class="input-group" style="max-width:400px;">
+    <form method="get" class="row g-3 mb-3">
+        <div class="col-md-7">
             <input type="text" name="q" class="form-control" placeholder="Buscar por área/persona u observaciones" value="{{ q|default:'' }}">
-            <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i> Buscar</button>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100" type="submit"><i class="fas fa-search"></i> Filtrar</button>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'remitos_list' %}" class="btn btn-outline-danger w-100"><i class="fas fa-times"></i> Limpiar</a>
         </div>
     </form>
     <div class="table-responsive rounded shadow-sm">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-primary">
                 <tr>
-                    <th scope="col">ID</th>
+                    <th scope="col">Número de Remito</th>
                     <th scope="col">Fecha</th>
                     <th scope="col">Área/Persona</th>
                     <th scope="col">Observaciones</th>
@@ -26,7 +31,7 @@
             <tbody>
                 {% for remito in page_obj %}
                 <tr>
-                    <td>{{ remito.id }}</td>
+                    <td>{{ remito }}</td>
                     <td>{{ remito.fecha|date:'d/m/Y H:i' }}</td>
                     <td>{{ remito.area_persona }}</td>
                     <td>{{ remito.observaciones|default:'-' }}</td>

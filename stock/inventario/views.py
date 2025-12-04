@@ -1429,13 +1429,14 @@ def dashboard(request):
 
     # Servicios próximos a vencer (dentro de 30 días)
     servicios_por_vencer = []
-    for servicio in Servicio.objects.filter(estado__in=['ACTIVO', 'POR_VENCER']):
-        dias = servicio.dias_para_vencimiento()
-        if dias is not None and dias <= 30:
-            servicios_por_vencer.append({
-                'servicio': servicio,
-                'dias_restantes': dias
-            })
+    if request.user.has_perm('inventario.view_servicio'):
+        for servicio in Servicio.objects.filter(estado__in=['ACTIVO', 'POR_VENCER']):
+            dias = servicio.dias_para_vencimiento()
+            if dias is not None and dias <= 30:
+                servicios_por_vencer.append({
+                    'servicio': servicio,
+                    'dias_restantes': dias
+                })
 
     # Paginación para servicios próximos a vencer
     servicios_paginator = Paginator(servicios_por_vencer, 10)
@@ -1673,8 +1674,7 @@ def crear_entrega(request):
 def editar_entrega(request, pk):
     entrega = get_object_or_404(Entrega, pk=pk)
     EntregaItemFormSet = forms.inlineformset_factory(
-        Entrega, EntregaItem, form=EntregaItemForm, extra=0, can_delete=True,
-        form_kwargs={'user': request.user}
+        Entrega, EntregaItem, form=EntregaItemForm, extra=0, can_delete=True
     )
     
     if request.method == 'POST':
@@ -1682,7 +1682,7 @@ def editar_entrega(request, pk):
         print("POST data:", dict(request.POST))
         
         form = EntregaForm(request.POST, instance=entrega, user=request.user)
-        formset = EntregaItemFormSet(request.POST, instance=entrega)
+        formset = EntregaItemFormSet(request.POST, instance=entrega, form_kwargs={'user': request.user})
         
         print("Form válido:", form.is_valid())
         print("Formset válido:", formset.is_valid())
@@ -1797,7 +1797,7 @@ def editar_entrega(request, pk):
                 return JsonResponse({'success': False, 'errors': errors})
     else:
         form = EntregaForm(instance=entrega, user=request.user)
-        formset = EntregaItemFormSet(instance=entrega)
+        formset = EntregaItemFormSet(instance=entrega, form_kwargs={'user': request.user})
     
     return render(request, 'inventario/entrega_form.html', {
         'form': form, 
