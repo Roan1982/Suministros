@@ -1976,18 +1976,25 @@ def reporte_servicios_estado(request):
 
     data = []
     excel_rows = []
+    total_cantidad = 0
+    total_costo = 0
+    
     for row in servicios_por_estado:
         estado_display = dict(Servicio.ESTADO_CHOICES).get(row['estado'], row['estado'])
+        costo_total = float(row['costo_total'] or 0)
         data.append({
             'estado': row['estado'],
             'estado_display': estado_display,
             'cantidad': row['cantidad'],
-            'costo_total': float(row['costo_total'] or 0),
+            'costo_total': costo_total,
         })
+        total_cantidad += row['cantidad']
+        total_costo += costo_total
+        
         excel_rows.append({
             'Estado': estado_display,
             'Cantidad de Servicios': row['cantidad'],
-            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+            'Costo Total Mensual ($)': costo_total,
         })
 
     if request.GET.get('export') == 'excel':
@@ -2022,7 +2029,11 @@ def reporte_servicios_estado(request):
         doc.build(elements)
         return response
 
-    return render(request, 'inventario/reporte_servicios_estado.html', {'data': data})
+    return render(request, 'inventario/reporte_servicios_estado.html', {
+        'data': data,
+        'total_cantidad': total_cantidad,
+        'total_costo': total_costo
+    })
 
 @login_required
 def reporte_servicios_proveedor(request):
@@ -2044,16 +2055,23 @@ def reporte_servicios_proveedor(request):
 
     data = []
     excel_rows = []
+    total_cantidad = 0
+    total_costo = 0
+    
     for row in servicios_por_proveedor:
+        costo_total = float(row['costo_total'] or 0)
         data.append({
             'proveedor': row['proveedor'],
             'cantidad': row['cantidad'],
-            'costo_total': float(row['costo_total'] or 0),
+            'costo_total': costo_total,
         })
+        total_cantidad += row['cantidad']
+        total_costo += costo_total
+        
         excel_rows.append({
             'Proveedor': row['proveedor'],
             'Cantidad de Servicios': row['cantidad'],
-            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+            'Costo Total Mensual ($)': costo_total,
         })
 
     if request.GET.get('export') == 'excel':
@@ -2088,7 +2106,11 @@ def reporte_servicios_proveedor(request):
         doc.build(elements)
         return response
 
-    return render(request, 'inventario/reporte_servicios_proveedor.html', {'data': data})
+    return render(request, 'inventario/reporte_servicios_proveedor.html', {
+        'data': data,
+        'total_cantidad': total_cantidad,
+        'total_costo': total_costo
+    })
 
 @login_required
 def reporte_servicios_rubro(request):
@@ -2110,17 +2132,24 @@ def reporte_servicios_rubro(request):
 
     data = []
     excel_rows = []
+    total_cantidad = 0
+    total_costo = 0
+    
     for row in servicios_por_rubro:
         rubro_nombre = row['rubro__nombre'] or 'Sin Rubro'
+        costo_total = float(row['costo_total'] or 0)
         data.append({
             'rubro': rubro_nombre,
             'cantidad': row['cantidad'],
-            'costo_total': float(row['costo_total'] or 0),
+            'costo_total': costo_total,
         })
+        total_cantidad += row['cantidad']
+        total_costo += costo_total
+        
         excel_rows.append({
             'Rubro': rubro_nombre,
             'Cantidad de Servicios': row['cantidad'],
-            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+            'Costo Total Mensual ($)': costo_total,
         })
 
     if request.GET.get('export') == 'excel':
@@ -2155,7 +2184,11 @@ def reporte_servicios_rubro(request):
         doc.build(elements)
         return response
 
-    return render(request, 'inventario/reporte_servicios_rubro.html', {'data': data})
+    return render(request, 'inventario/reporte_servicios_rubro.html', {
+        'data': data,
+        'total_cantidad': total_cantidad,
+        'total_costo': total_costo
+    })
 
 @login_required
 def reporte_costos_servicios(request):

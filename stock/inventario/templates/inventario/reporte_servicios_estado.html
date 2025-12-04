@@ -61,8 +61,8 @@
         <tfoot class="table-dark">
           <tr>
             <th>TOTAL</th>
-            <th class="text-center">{{ data|length }}</th>
-            <th class="text-end">${{ data|sum:"costo_total"|floatformat:2 }}</th>
+            <th class="text-center">{{ total_cantidad }}</th>
+            <th class="text-end">${{ total_costo|floatformat:2 }}</th>
           </tr>
         </tfoot>
         {% endif %}
