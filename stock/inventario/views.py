@@ -1989,21 +1989,13 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     
-    # Generar pagos mensuales si no existen (desde el mes actual hasta máximo 1 mes posterior)
-    if servicio.frecuencia == 'MENSUAL':
-        from datetime import date
+    # Generar pagos mensuales históricos si no existen (desde fecha_inicio hasta fecha_fin)
+    if servicio.frecuencia == 'MENSUAL' and servicio.fecha_inicio:
         from dateutil.relativedelta import relativedelta
         
-        hoy = date.today()
-        # Máximo 1 mes posterior al actual
-        fecha_limite = hoy.replace(day=1) + relativedelta(months=1)
+        fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
+        fecha_limite = servicio.fecha_fin if servicio.fecha_fin else fecha_actual + relativedelta(years=10)  # Si no hay fecha_fin, generar hasta 10 años adelante
         
-        # Si tiene fecha_fin, usar la menor entre fecha_fin y fecha_limite
-        if servicio.fecha_fin:
-            fecha_limite = min(servicio.fecha_fin, fecha_limite)
-        
-        # Generar pagos desde el mes actual hasta fecha_limite
-        fecha_actual = hoy.replace(day=1)  # Primer día del mes actual
         while fecha_actual <= fecha_limite:
             if not servicio.pagos.filter(fecha_vencimiento=fecha_actual).exists():
                 ServicioPago.objects.create(
@@ -2012,6 +2004,12 @@ def servicio_detalle(request, pk):
                     estado='PENDIENTE'
                 )
             fecha_actual += relativedelta(months=1)
+    
+    # Determinar qué pagos pueden ser marcados como pagados (mes actual + siguiente)
+    from datetime import date
+    hoy = date.today()
+    mes_actual = hoy.replace(day=1)
+    mes_siguiente = mes_actual + relativedelta(months=1)
     
     # Agrupar pagos por año
     pagos_por_anio = {}
@@ -2026,7 +2024,9 @@ def servicio_detalle(request, pk):
     
     return render(request, 'inventario/servicio_detalle.html', {
         'servicio': servicio,
-        'pagos_por_anio': pagos_por_anio
+        'pagos_por_anio': pagos_por_anio,
+        'mes_actual': mes_actual,
+        'mes_siguiente': mes_siguiente
     })
 
 @login_required

@@ -297,9 +297,15 @@
                                                                         <p><strong>Importe pagado:</strong> ${{ pago.importe_pago|floatformat:2 }}</p>
                                                                     {% else %}
                                                                         <p><strong>Importe esperado:</strong> ${{ servicio.costo_mensual|floatformat:2 }}</p>
-                                                                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago{{ pago.id }}">
-                                                                            <i class="fas fa-check"></i> Marcar como Pagado
-                                                                        </button>
+                                                                        {% if pago.fecha_vencimiento >= mes_actual and pago.fecha_vencimiento <= mes_siguiente %}
+                                                                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago{{ pago.id }}">
+                                                                                <i class="fas fa-check"></i> Marcar como Pagado
+                                                                            </button>
+                                                                        {% else %}
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-info-circle"></i> Solo se pueden gestionar pagos del mes actual y siguiente
+                                                                            </small>
+                                                                        {% endif %}
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
