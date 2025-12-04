@@ -1550,8 +1550,7 @@ def agregar_orden(request):
 @login_required
 def crear_entrega(request):
     EntregaItemFormSet = forms.inlineformset_factory(
-        Entrega, EntregaItem, form=EntregaItemForm, extra=1, can_delete=True,
-        form_kwargs={'user': request.user}
+        Entrega, EntregaItem, form=EntregaItemForm, extra=1, can_delete=True
     )
     if request.method == 'POST':
         print("=== DEBUG BACKEND ===")
@@ -1563,7 +1562,7 @@ def crear_entrega(request):
                 print(f"Prefijo detectado: '{prefix}'")
                 break
         form = EntregaForm(request.POST, user=request.user)
-        formset = EntregaItemFormSet(request.POST or None)
+        formset = EntregaItemFormSet(request.POST or None, form_kwargs={'user': request.user})
         print("Form válido:", form.is_valid())
         print("Formset válido:", formset.is_valid())
         if not formset.is_valid():
@@ -1666,7 +1665,7 @@ def crear_entrega(request):
                 return JsonResponse({'success': False, 'errors': errors})
     else:
         form = EntregaForm(user=request.user)
-        formset = EntregaItemFormSet()
+        formset = EntregaItemFormSet(form_kwargs={'user': request.user})
     return render(request, 'inventario/entrega_form.html', {'form': form, 'formset': formset})
 
 @login_required
