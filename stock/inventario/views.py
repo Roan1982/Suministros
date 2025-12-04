@@ -2479,41 +2479,51 @@ def reporte_servicios_pendientes(request):
         fecha_vencimiento__lte=hoy
     ).select_related('servicio').order_by('servicio__frecuencia', 'servicio__nombre', 'fecha_vencimiento')
 
-    data = []
-    excel_rows = []
-    total_cantidad = 0
-    total_monto = 0
-    
+    # Agrupar pagos por servicio
+    pagos_por_servicio = {}
     for pago in pagos_pendientes:
-        frecuencia_display = dict(Servicio.FRECUENCIA_CHOICES).get(pago.servicio.frecuencia, pago.servicio.frecuencia)
-        monto = float(pago.servicio.costo_mensual)
-        data.append({
-            'servicio': pago.servicio.nombre,
-            'proveedor': pago.servicio.proveedor,
-            'frecuencia': pago.servicio.frecuencia,
-            'frecuencia_display': frecuencia_display,
+        servicio_id = pago.servicio.id
+        if servicio_id not in pagos_por_servicio:
+            pagos_por_servicio[servicio_id] = {
+                'servicio': pago.servicio.nombre,
+                'proveedor': pago.servicio.proveedor,
+                'frecuencia': pago.servicio.frecuencia,
+                'frecuencia_display': dict(Servicio.FRECUENCIA_CHOICES).get(pago.servicio.frecuencia, pago.servicio.frecuencia),
+                'pagos': [],
+                'total_pagos': 0,
+                'monto_total': 0
+            }
+        pagos_por_servicio[servicio_id]['pagos'].append({
             'fecha_vencimiento': pago.fecha_vencimiento,
-            'monto': monto,
+            'monto': monto
         })
-        total_cantidad += 1
-        total_monto += monto
-        
-        excel_rows.append({
-            'Servicio': pago.servicio.nombre,
-            'Proveedor': pago.servicio.proveedor,
-            'Frecuencia': frecuencia_display,
-            'Fecha Vencimiento': pago.fecha_vencimiento.strftime('%d/%m/%Y'),
-            'Monto Mensual ($)': monto,
-        })
+        pagos_por_servicio[servicio_id]['total_pagos'] += 1
+        pagos_por_servicio[servicio_id]['monto_total'] += monto
 
-    # Agrupar por frecuencia para resumen
+    # Convertir a lista ordenada
+    data = list(pagos_por_servicio.values())
+    data.sort(key=lambda x: (x['frecuencia'], x['servicio']))
+
+    # Para Excel y PDF, mantener la lista plana
+    excel_rows = []
+    for servicio in data:
+        for pago in servicio['pagos']:
+            excel_rows.append({
+                'Servicio': servicio['servicio'],
+                'Proveedor': servicio['proveedor'],
+                'Frecuencia': servicio['frecuencia_display'],
+                'Fecha Vencimiento': pago['fecha_vencimiento'].strftime('%d/%m/%Y'),
+                'Monto Mensual ($)': pago['monto'],
+            })
+
+    # Resumen por frecuencia
     resumen_por_frecuencia = {}
-    for item in data:
-        freq = item['frecuencia']
+    for servicio in data:
+        freq = servicio['frecuencia']
         if freq not in resumen_por_frecuencia:
-            resumen_por_frecuencia[freq] = {'cantidad': 0, 'monto': 0, 'display': item['frecuencia_display']}
-        resumen_por_frecuencia[freq]['cantidad'] += 1
-        resumen_por_frecuencia[freq]['monto'] += item['monto']
+            resumen_por_frecuencia[freq] = {'cantidad': 0, 'monto': 0, 'display': servicio['frecuencia_display']}
+        resumen_por_frecuencia[freq]['cantidad'] += servicio['total_pagos']
+        resumen_por_frecuencia[freq]['monto'] += servicio['monto_total']
 
     if request.GET.get('export') == 'excel':
         df = pd.DataFrame(excel_rows)
