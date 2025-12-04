@@ -2588,12 +2588,12 @@ def realizar_pago(request, pago_id):
             pago.fecha_pago = fecha_pago
             pago.importe_pago = importe_pago
             pago.expediente_pago = expediente_pago or ''
-            pago.estado = 'pagado'
+            pago.estado = 'PAGADO'
             pago.save()
             # Log de auditoría
             content_type = ContentType.objects.get_for_model(pago)
             changes = {
-                'estado': ['pendiente', 'pagado'],
+                'estado': ['PENDIENTE', 'PAGADO'],
                 'fecha_pago': [None, fecha_pago],
                 'importe_pago': [None, importe_pago],
                 'expediente_pago': [pago.expediente_pago, expediente_pago or '']
