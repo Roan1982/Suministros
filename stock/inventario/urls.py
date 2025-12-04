@@ -37,6 +37,11 @@ urlpatterns = [
     path('reportes/ranking_bienes/', views.reporte_ranking_bienes, name='reporte_ranking_bienes'),
     path('reportes/ranking_proveedores/', views.reporte_ranking_proveedores, name='reporte_ranking_proveedores'),
     path('reportes/personalizado/', views.reporte_personalizado, name='reporte_personalizado'),
+    # Reportes de servicios
+    path('reportes/servicios_estado/', views.reporte_servicios_estado, name='reporte_servicios_estado'),
+    path('reportes/servicios_proveedor/', views.reporte_servicios_proveedor, name='reporte_servicios_proveedor'),
+    path('reportes/servicios_rubro/', views.reporte_servicios_rubro, name='reporte_servicios_rubro'),
+    path('reportes/costos_servicios/', views.reporte_costos_servicios, name='reporte_costos_servicios'),
     path('auditoria/', views.audit_log_list, name='audit_log'),
     # URLs para servicios
     path('servicios/', views.servicios_list, name='servicios_list'),

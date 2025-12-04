@@ -1953,3 +1953,339 @@ def editar_servicio(request, pk):
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
     return render(request, 'inventario/servicio_detalle.html', {'servicio': servicio})
+
+# ===== REPORTES DE SERVICIOS =====
+
+@login_required
+def reporte_servicios_estado(request):
+    """Reporte de servicios agrupados por estado"""
+    from .models import Servicio
+    from django.db.models import Count, Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Agrupar servicios por estado
+    servicios_por_estado = Servicio.objects.values('estado').annotate(
+        cantidad=Count('id'),
+        costo_total=Sum('costo_mensual')
+    ).order_by('estado')
+
+    data = []
+    excel_rows = []
+    for row in servicios_por_estado:
+        estado_display = dict(Servicio.ESTADO_CHOICES).get(row['estado'], row['estado'])
+        data.append({
+            'estado': row['estado'],
+            'estado_display': estado_display,
+            'cantidad': row['cantidad'],
+            'costo_total': float(row['costo_total'] or 0),
+        })
+        excel_rows.append({
+            'Estado': estado_display,
+            'Cantidad de Servicios': row['cantidad'],
+            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_estado.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_estado.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Servicios por Estado', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Estado", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Estado'], row['Cantidad de Servicios'], f"{row['Costo Total Mensual ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_servicios_estado.html', {'data': data})
+
+@login_required
+def reporte_servicios_proveedor(request):
+    """Reporte de servicios agrupados por proveedor"""
+    from .models import Servicio
+    from django.db.models import Count, Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Agrupar servicios por proveedor
+    servicios_por_proveedor = Servicio.objects.values('proveedor').annotate(
+        cantidad=Count('id'),
+        costo_total=Sum('costo_mensual')
+    ).order_by('proveedor')
+
+    data = []
+    excel_rows = []
+    for row in servicios_por_proveedor:
+        data.append({
+            'proveedor': row['proveedor'],
+            'cantidad': row['cantidad'],
+            'costo_total': float(row['costo_total'] or 0),
+        })
+        excel_rows.append({
+            'Proveedor': row['proveedor'],
+            'Cantidad de Servicios': row['cantidad'],
+            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_proveedor.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_proveedor.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Servicios por Proveedor', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Proveedor", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Proveedor'], row['Cantidad de Servicios'], f"{row['Costo Total Mensual ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_servicios_proveedor.html', {'data': data})
+
+@login_required
+def reporte_servicios_rubro(request):
+    """Reporte de servicios agrupados por rubro"""
+    from .models import Servicio
+    from django.db.models import Count, Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Agrupar servicios por rubro
+    servicios_por_rubro = Servicio.objects.select_related('rubro').values('rubro__nombre').annotate(
+        cantidad=Count('id'),
+        costo_total=Sum('costo_mensual')
+    ).order_by('rubro__nombre')
+
+    data = []
+    excel_rows = []
+    for row in servicios_por_rubro:
+        rubro_nombre = row['rubro__nombre'] or 'Sin Rubro'
+        data.append({
+            'rubro': rubro_nombre,
+            'cantidad': row['cantidad'],
+            'costo_total': float(row['costo_total'] or 0),
+        })
+        excel_rows.append({
+            'Rubro': rubro_nombre,
+            'Cantidad de Servicios': row['cantidad'],
+            'Costo Total Mensual ($)': float(row['costo_total'] or 0),
+        })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_rubro.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=servicios_por_rubro.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Servicios por Rubro', styles['Title']))
+        elements.append(Spacer(1, 12))
+        table_data = [["Rubro", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
+        for row in excel_rows:
+            table_data.append([row['Rubro'], row['Cantidad de Servicios'], f"{row['Costo Total Mensual ($)']:.2f}"])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_servicios_rubro.html', {'data': data})
+
+@login_required
+def reporte_costos_servicios(request):
+    """Reporte de costos totales de servicios"""
+    from .models import Servicio
+    from django.db.models import Sum
+    import pandas as pd
+    from django.http import HttpResponse
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Obtener todos los servicios con sus costos calculados
+    servicios = Servicio.objects.select_related('rubro').all()
+    data = []
+    excel_rows = []
+
+    costo_mensual_total = 0
+    costo_anual_total = 0
+
+    for servicio in servicios:
+        costo_total = servicio.calcular_costo_total()
+        costo_mensual = float(servicio.costo_mensual)
+        costo_anual = costo_mensual * 12
+
+        data.append({
+            'servicio': servicio,
+            'costo_mensual': costo_mensual,
+            'costo_anual': costo_anual,
+            'costo_total': costo_total,
+            'estado': servicio.estado_actual,
+            'dias_vencimiento': servicio.dias_para_vencimiento(),
+        })
+
+        excel_rows.append({
+            'Servicio': str(servicio),
+            'Proveedor': servicio.proveedor,
+            'Rubro': servicio.rubro.nombre if servicio.rubro else 'Sin Rubro',
+            'Frecuencia': servicio.get_frecuencia_display(),
+            'Costo Mensual ($)': costo_mensual,
+            'Costo Anual ($)': costo_anual,
+            'Costo Total Contrato ($)': costo_total if costo_total else 0,
+            'Estado': servicio.estado_actual,
+            'Fecha Inicio': servicio.fecha_inicio,
+            'Fecha Fin': servicio.fecha_fin,
+            'Días para Vencimiento': servicio.dias_para_vencimiento(),
+        })
+
+        costo_mensual_total += costo_mensual
+        costo_anual_total += costo_anual
+
+    # Agregar fila de totales
+    excel_rows.append({
+        'Servicio': 'TOTAL',
+        'Proveedor': '',
+        'Rubro': '',
+        'Frecuencia': '',
+        'Costo Mensual ($)': costo_mensual_total,
+        'Costo Anual ($)': costo_anual_total,
+        'Costo Total Contrato ($)': '',
+        'Estado': '',
+        'Fecha Inicio': '',
+        'Fecha Fin': '',
+        'Días para Vencimiento': '',
+    })
+
+    if request.GET.get('export') == 'excel':
+        df = pd.DataFrame(excel_rows)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=costos_servicios.xlsx'
+        df.to_excel(response, index=False)
+        return response
+
+    if request.GET.get('export') == 'pdf':
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=costos_servicios.pdf'
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('Costos Totales de Servicios', styles['Title']))
+        elements.append(Spacer(1, 12))
+
+        # Tabla de resumen
+        elements.append(Paragraph('Resumen de Costos', styles['Heading2']))
+        resumen_data = [
+            ['Total Servicios', len(servicios)],
+            ['Costo Mensual Total', f"${costo_mensual_total:.2f}"],
+            ['Costo Anual Total', f"${costo_anual_total:.2f}"],
+        ]
+        t_resumen = Table(resumen_data)
+        t_resumen.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t_resumen)
+        elements.append(Spacer(1, 24))
+
+        # Tabla detallada
+        elements.append(Paragraph('Detalle por Servicio', styles['Heading2']))
+        table_data = [["Servicio", "Proveedor", "Costo Mensual ($)", "Costo Anual ($)", "Estado"]]
+        for row in excel_rows[:-1]:  # Excluir la fila de totales
+            table_data.append([
+                row['Servicio'][:30] + '...' if len(row['Servicio']) > 30 else row['Servicio'],
+                row['Proveedor'][:20] + '...' if len(row['Proveedor']) > 20 else row['Proveedor'],
+                f"{row['Costo Mensual ($)']:.2f}",
+                f"{row['Costo Anual ($)']:.2f}",
+                row['Estado']
+            ])
+        t = Table(table_data, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+        elements.append(t)
+        doc.build(elements)
+        return response
+
+    return render(request, 'inventario/reporte_costos_servicios.html', {
+        'data': data,
+        'costo_mensual_total': costo_mensual_total,
+        'costo_anual_total': costo_anual_total,
+    })
