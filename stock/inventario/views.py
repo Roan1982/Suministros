@@ -2493,6 +2493,7 @@ def reporte_servicios_pendientes(request):
                 'total_pagos': 0,
                 'monto_total': 0
             }
+        monto = float(pago.servicio.costo_mensual)
         pagos_por_servicio[servicio_id]['pagos'].append({
             'fecha_vencimiento': pago.fecha_vencimiento,
             'monto': monto
