@@ -2505,6 +2505,10 @@ def reporte_servicios_pendientes(request):
     data = list(pagos_por_servicio.values())
     data.sort(key=lambda x: (x['frecuencia'], x['servicio']))
 
+    # Calcular totales
+    total_cantidad = sum(servicio['total_pagos'] for servicio in data)
+    total_monto = sum(servicio['monto_total'] for servicio in data)
+
     # Para Excel y PDF, mantener la lista plana
     excel_rows = []
     for servicio in data:
@@ -2542,13 +2546,13 @@ def reporte_servicios_pendientes(request):
         elements.append(Paragraph('Pagos Pendientes por Servicio', styles['Title']))
         elements.append(Spacer(1, 12))
         table_data = [["Servicio", "Proveedor", "Frecuencia", "Fecha Vencimiento", "Monto Mensual ($)"]]
-        for item in data:
+        for row in excel_rows:
             table_data.append([
-                item['servicio'], 
-                item['proveedor'], 
-                item['frecuencia_display'], 
-                item['fecha_vencimiento'].strftime('%d/%m/%Y'), 
-                f"${item['monto']:.2f}"
+                row['Servicio'],
+                row['Proveedor'],
+                row['Frecuencia'],
+                row['Fecha Vencimiento'],
+                row['Monto Mensual ($)']
             ])
         table_data.append(["Total", "", "", "", f"${total_monto:.2f}"])
         t = Table(table_data)
