@@ -43,6 +43,7 @@ urlpatterns = [
     path('reportes/servicios_rubro/', views.reporte_servicios_rubro, name='reporte_servicios_rubro'),
     path('reportes/costos_servicios/', views.reporte_costos_servicios, name='reporte_costos_servicios'),
     path('reportes/servicios_pendientes/', views.reporte_servicios_pendientes, name='reporte_servicios_pendientes'),
+    path('reportes/servicios_pendientes/realizar_pago/<int:pago_id>/', views.realizar_pago, name='realizar_pago'),
     path('auditoria/', views.audit_log_list, name='audit_log'),
     # URLs para servicios
     path('servicios/', views.servicios_list, name='servicios_list'),

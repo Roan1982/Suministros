@@ -2576,3 +2576,29 @@ def reporte_servicios_pendientes(request):
         'total_cantidad': total_cantidad,
         'total_monto': total_monto,
     })
+
+@login_required
+def realizar_pago(request, pago_id):
+    pago = get_object_or_404(ServicioPago, id=pago_id)
+    if request.method == 'POST':
+        fecha_pago = request.POST.get('fecha_pago')
+        importe_pago = request.POST.get('importe_pago')
+        expediente_pago = request.POST.get('expediente_pago')
+        if fecha_pago and importe_pago:
+            pago.fecha_pago = fecha_pago
+            pago.importe_pago = importe_pago
+            pago.expediente_pago = expediente_pago or ''
+            pago.estado = 'pagado'
+            pago.save()
+            # Log de auditoría
+            AuditLog.objects.create(
+                user=request.user,
+                action='Pago realizado',
+                model_name='ServicioPago',
+                object_id=pago.id,
+                details=f'Pago realizado para servicio {pago.servicio.nombre} - Fecha: {fecha_pago}, Importe: {importe_pago}'
+            )
+            messages.success(request, f'Pago realizado exitosamente para {pago.servicio.nombre}.')
+        else:
+            messages.error(request, 'Fecha e importe son obligatorios.')
+    return redirect('reporte_servicios_pendientes')
