@@ -1,0 +1,64 @@
+{% extends 'inventario/base.html' %}
+{% load static %}
+
+{% block title %}Renovar Servicio{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-sync-alt"></i> Renovar Servicio
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Servicio:</strong> {{ servicio.nombre }}<br>
+                        <strong>Proveedor:</strong> {{ servicio.proveedor }}<br>
+                        <strong>Fecha actual de finalización:</strong> {{ servicio.fecha_fin|date:"d/m/Y"|default:"Sin fecha" }}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.tipo_expediente.id_for_label }}">Tipo de expediente *</label>
+                            {{ form.tipo_expediente }}
+                            {% if form.tipo_expediente.errors %}
+                                <div class="text-danger">{{ form.tipo_expediente.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.numero_expediente.id_for_label }}">Número de expediente *</label>
+                            {{ form.numero_expediente }}
+                            {% if form.numero_expediente.errors %}
+                                <div class="text-danger">{{ form.numero_expediente.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.nueva_fecha_fin.id_for_label }}">Nueva fecha de finalización *</label>
+                            {{ form.nueva_fecha_fin }}
+                            {% if form.nueva_fecha_fin.errors %}
+                                <div class="text-danger">{{ form.nueva_fecha_fin.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save"></i> Renovar Servicio
+                            </button>
+                            <a href="{% url 'servicio_detalle' servicio.pk %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

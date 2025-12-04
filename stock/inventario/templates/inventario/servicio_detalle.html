@@ -33,11 +33,11 @@
             {% if servicio.estado_actual == 'VENCIDO' %}
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>¡Atención!</strong> Este servicio está vencido.
+                ¡Atención!</strong> Este servicio está vencido.
                 {% if servicio.dias_para_vencimiento %}
                 Venció hace {% widthratio servicio.dias_para_vencimiento 1 -1 %} días.
                 {% endif %}
-                <button type="button" class="close" data-dismiss="alert">
+                <button type="button" class="close" data-bs-dismiss="alert">
                     <span>&times;</span>
                 </button>
             </div>
@@ -48,7 +48,7 @@
                 {% if servicio.dias_para_vencimiento %}
                 Faltan {{ servicio.dias_para_vencimiento }} días.
                 {% endif %}
-                <button type="button" class="close" data-dismiss="alert">
+                <button type="button" class="close" data-bs-dismiss="alert">
                     <span>&times;</span>
                 </button>
             </div>
@@ -230,21 +230,89 @@
             </div>
             {% endif %}
 
-            <!-- Próxima renovación -->
+            <!-- Vencimientos y Pagos -->
+            {% if servicio.frecuencia == 'MENSUAL' and pagos %}
             <div class="row mt-4">
                 <div class="col-12">
-                    <div class="card shadow-sm border-info">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calendar-alt text-primary"></i> Vencimientos y Pagos Mensuales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="accordionPagos">
+                                {% for pago in pagos %}
+                                <div class="card mb-2">
+                                    <div class="card-header" id="heading{{ pago.id }}">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" data-bs-toggle="collapse" data-bs-target="#collapse{{ pago.id }}" aria-expanded="false" aria-controls="collapse{{ pago.id }}">
+                                                <i class="fas fa-calendar-day"></i> {{ pago.fecha_vencimiento|date:"F Y" }}
+                                                {% if pago.estado == 'PENDIENTE' %}
+                                                    <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                                        <i class="fas fa-clock"></i> Pendiente
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                                        <i class="fas fa-check-circle"></i> Pagado
+                                                    </span>
+                                                {% endif %}
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapse{{ pago.id }}" class="collapse" aria-labelledby="heading{{ pago.id }}" data-bs-parent="#accordionPagos">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <p><strong>Fecha de vencimiento:</strong> {{ pago.fecha_vencimiento|date:"d/m/Y" }}</p>
+                                                    <p><strong>Estado:</strong> 
+                                                        {% if pago.estado == 'PENDIENTE' %}
+                                                            <span class="badge badge-warning-custom badge-lg font-weight-bold">
+                                                                <i class="fas fa-clock"></i> Pendiente
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="badge badge-success-custom badge-lg font-weight-bold">
+                                                                <i class="fas fa-check-circle"></i> Pagado
+                                                            </span>
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    {% if pago.estado == 'PAGADO' %}
+                                                        <p><strong>Expediente de pago:</strong> {{ pago.expediente_pago|default:"-" }}</p>
+                                                        <p><strong>Fecha de pago:</strong> {{ pago.fecha_pago|date:"d/m/Y"|default:"-" }}</p>
+                                                        <p><strong>Importe pagado:</strong> ${{ pago.importe_pago|floatformat:2 }}</p>
+                                                    {% else %}
+                                                        <p><strong>Importe esperado:</strong> ${{ servicio.costo_mensual|floatformat:2 }}</p>
+                                                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago{{ pago.id }}">
+                                                            <i class="fas fa-check"></i> Marcar como Pagado
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Botón de Renovación -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-warning">
                         <div class="card-body text-center">
-                            <h6 class="text-info mb-2">
-                                <i class="fas fa-sync-alt"></i> Próxima Renovación
+                            <h6 class="text-warning mb-3">
+                                <i class="fas fa-sync-alt"></i> Renovación del Servicio
                             </h6>
-                            <p class="mb-0">
-                                {% if servicio.calcular_proxima_renovacion %}
-                                    <strong>{{ servicio.calcular_proxima_renovacion|date:"l, d F Y" }}</strong>
-                                {% else %}
-                                    <span class="text-muted">No disponible</span>
-                                {% endif %}
-                            </p>
+                            <p class="mb-3">Renovar el contrato del servicio con un nuevo expediente.</p>
+                            <a href="{% url 'renovar_servicio' servicio.pk %}" class="btn btn-warning">
+                                <i class="fas fa-refresh"></i> Renovar Servicio
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -252,6 +320,56 @@
         </div>
     </div>
 </div>
+
+<!-- Modales para marcar pagos como pagados -->
+{% for pago in pagos %}
+{% if pago.estado == 'PENDIENTE' %}
+<div class="modal fade" id="modalPago{{ pago.id }}" tabindex="-1" role="dialog" aria-labelledby="modalPagoLabel{{ pago.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalPagoLabel{{ pago.id }}">
+                    <i class="fas fa-check-circle"></i> Marcar Pago como Pagado
+                </h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'marcar_pago_pagado' pago.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="alert alert-info">
+                        <strong>Servicio:</strong> {{ servicio.nombre }}<br>
+                        <strong>Proveedor:</strong> {{ servicio.proveedor }}<br>
+                        <strong>Vencimiento:</strong> {{ pago.fecha_vencimiento|date:"d/m/Y" }}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_expediente_pago">Expediente de pago *</label>
+                        <input type="text" name="expediente_pago" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_fecha_pago">Fecha de pago *</label>
+                        <input type="date" name="fecha_pago" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_importe_pago">Importe pagado</label>
+                        <input type="number" name="importe_pago" class="form-control" step="0.01" value="{{ servicio.costo_mensual }}">
+                        <small class="form-text text-muted">Por defecto: ${{ servicio.costo_mensual|floatformat:2 }}</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Guardar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 
 <style>
 .badge-lg {

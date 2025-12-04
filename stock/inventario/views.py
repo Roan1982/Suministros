@@ -4,7 +4,7 @@ from django.db.models import Q, Sum, F
 from django.http import JsonResponse, HttpResponse
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio
+from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, EntregaItem, Servicio, ServicioPago
 from django.contrib import messages
 from django.template.loader import get_template
 from xhtml2pdf import pisa
@@ -1318,6 +1318,42 @@ class ServicioForm(forms.ModelForm):
                 except Exception:
                     self.fields[field].initial = None
 
+class ServicioPagoForm(forms.ModelForm):
+    fecha_pago = forms.DateField(
+        label="Fecha de pago",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y']
+    )
+
+    class Meta:
+        model = ServicioPago
+        fields = ['expediente_pago', 'fecha_pago', 'importe_pago']
+        widgets = {
+            'expediente_pago': forms.TextInput(attrs={'class': 'form-control'}),
+            'importe_pago': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+class ServicioRenovacionForm(forms.Form):
+    EXPEDIENTE_CHOICES = [
+        ('ORDEN_COMPRA', 'Orden de Compra'),
+        ('LEGITIMO_ABONO', 'Legítimo Abono'),
+    ]
+    
+    tipo_expediente = forms.ChoiceField(
+        label="Tipo de expediente",
+        choices=EXPEDIENTE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    numero_expediente = forms.CharField(
+        label="Número de expediente",
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    nueva_fecha_fin = forms.DateField(
+        label="Nueva fecha de finalización",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y']
+    )
+
 @login_required
 def dashboard(request):
     from django.db.models import Sum
@@ -1952,7 +1988,71 @@ def editar_servicio(request, pk):
 @login_required
 def servicio_detalle(request, pk):
     servicio = get_object_or_404(Servicio, pk=pk)
-    return render(request, 'inventario/servicio_detalle.html', {'servicio': servicio})
+    
+    # Generar pagos mensuales si no existen
+    if servicio.frecuencia == 'MENSUAL' and servicio.fecha_fin:
+        servicio.generar_pagos_mensuales()
+    
+    pagos = servicio.pagos.all().order_by('fecha_vencimiento')
+    
+    return render(request, 'inventario/servicio_detalle.html', {
+        'servicio': servicio,
+        'pagos': pagos
+    })
+
+@login_required
+def marcar_pago_pagado(request, pago_id):
+    pago = get_object_or_404(ServicioPago, pk=pago_id)
+    servicio = pago.servicio
+    
+    if request.method == 'POST':
+        form = ServicioPagoForm(request.POST, instance=pago)
+        if form.is_valid():
+            pago = form.save(commit=False)
+            pago.estado = 'PAGADO'
+            pago.save()
+            messages.success(request, f'Pago marcado como pagado exitosamente.')
+            return redirect('servicio_detalle', pk=servicio.pk)
+    else:
+        form = ServicioPagoForm(instance=pago)
+        form.fields['importe_pago'].initial = servicio.costo_mensual
+    
+    return render(request, 'inventario/marcar_pago_pagado.html', {
+        'form': form,
+        'pago': pago,
+        'servicio': servicio
+    })
+
+@login_required
+def renovar_servicio(request, pk):
+    servicio = get_object_or_404(Servicio, pk=pk)
+    
+    if request.method == 'POST':
+        form = ServicioRenovacionForm(request.POST)
+        if form.is_valid():
+            tipo_expediente = form.cleaned_data['tipo_expediente']
+            numero_expediente = form.cleaned_data['numero_expediente']
+            nueva_fecha_fin = form.cleaned_data['nueva_fecha_fin']
+            
+            # Actualizar el servicio
+            servicio.fecha_fin = nueva_fecha_fin
+            expediente_renovacion = f"{tipo_expediente}: {numero_expediente}"
+            servicio.observaciones = f"{servicio.observaciones}\nRenovado con {expediente_renovacion} hasta {nueva_fecha_fin}".strip()
+            servicio.save()
+            
+            # Generar nuevos pagos si es mensual
+            if servicio.frecuencia == 'MENSUAL':
+                servicio.generar_pagos_mensuales()
+            
+            messages.success(request, f'Servicio renovado exitosamente hasta {nueva_fecha_fin}.')
+            return redirect('servicio_detalle', pk=servicio.pk)
+    else:
+        form = ServicioRenovacionForm()
+    
+    return render(request, 'inventario/renovar_servicio.html', {
+        'form': form,
+        'servicio': servicio
+    })
 
 # ===== REPORTES DE SERVICIOS =====
 

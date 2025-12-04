@@ -1,0 +1,65 @@
+{% extends 'inventario/base.html' %}
+{% load static %}
+
+{% block title %}Marcar Pago como Pagado{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-check-circle"></i> Marcar Pago como Pagado
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Servicio:</strong> {{ servicio.nombre }}<br>
+                        <strong>Proveedor:</strong> {{ servicio.proveedor }}<br>
+                        <strong>Vencimiento:</strong> {{ pago.fecha_vencimiento|date:"d/m/Y" }}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.expediente_pago.id_for_label }}">Expediente de pago *</label>
+                            {{ form.expediente_pago }}
+                            {% if form.expediente_pago.errors %}
+                                <div class="text-danger">{{ form.expediente_pago.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.fecha_pago.id_for_label }}">Fecha de pago *</label>
+                            {{ form.fecha_pago }}
+                            {% if form.fecha_pago.errors %}
+                                <div class="text-danger">{{ form.fecha_pago.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.importe_pago.id_for_label }}">Importe pagado</label>
+                            {{ form.importe_pago }}
+                            <small class="form-text text-muted">Por defecto: ${{ servicio.costo_mensual|floatformat:2 }}</small>
+                            {% if form.importe_pago.errors %}
+                                <div class="text-danger">{{ form.importe_pago.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Guardar Pago
+                            </button>
+                            <a href="{% url 'servicio_detalle' servicio.pk %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -195,10 +195,52 @@ class Servicio(models.Model):
             semanas = dias_totales / 7
             return self.costo_mensual * max(1, semanas)
         
-        return None
+    def generar_pagos_mensuales(self):
+        """Genera pagos mensuales para servicios mensuales"""
+        if self.frecuencia != 'MENSUAL' or not self.fecha_fin:
+            return
+        
+        from dateutil.relativedelta import relativedelta
+        from datetime import date
+        
+        # Eliminar pagos existentes si es necesario (opcional)
+        # self.pagos.all().delete()
+        
+        fecha_actual = self.fecha_inicio
+        while fecha_actual <= self.fecha_fin:
+            # Crear pago si no existe
+            if not self.pagos.filter(fecha_vencimiento=fecha_actual).exists():
+                ServicioPago.objects.create(
+                    servicio=self,
+                    fecha_vencimiento=fecha_actual,
+                    estado='PENDIENTE'
+                )
+            # Avanzar al siguiente mes
+            fecha_actual += relativedelta(months=1)
 
     def __str__(self):
         return f"{self.nombre} - {self.proveedor} ({self.get_frecuencia_display()})"
+
+class ServicioPago(models.Model):
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente'),
+        ('PAGADO', 'Pagado'),
+    ]
+
+    servicio = models.ForeignKey(Servicio, related_name='pagos', on_delete=models.CASCADE)
+    fecha_vencimiento = models.DateField(verbose_name="Fecha de vencimiento")
+    estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='PENDIENTE', verbose_name="Estado")
+    expediente_pago = models.CharField(max_length=100, blank=True, verbose_name="Expediente de pago")
+    fecha_pago = models.DateField(null=True, blank=True, verbose_name="Fecha de pago")
+    importe_pago = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Importe pagado")
+
+    def save(self, *args, **kwargs):
+        if not self.importe_pago:
+            self.importe_pago = self.servicio.costo_mensual
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Pago {self.servicio.nombre} - {self.fecha_vencimiento}"
 
 class Almacen(models.Model):
     nombre = models.CharField(max_length=100)
