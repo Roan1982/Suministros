@@ -88,7 +88,17 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'servicios_list' %}">Servicios</a></li>
         {% endif %}
         <li class="nav-item"><a class="nav-link" href="{% url 'reportes' %}">Reportes</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'analytics' %}">Análisis</a></li>
       </ul>
+      
+      <!-- Barra de búsqueda global -->
+      <form class="d-flex me-3" method="GET" action="{% url 'bienes_list' %}">
+        <input class="form-control me-2" type="search" name="q" placeholder="Buscar bienes..." aria-label="Buscar" value="{{ request.GET.q }}">
+        <button class="btn btn-outline-light" type="submit">
+          <i class="fas fa-search"></i>
+        </button>
+      </form>
+      
       <ul class="navbar-nav ms-auto flex-row align-items-center">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle fw-semibold" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -2696,3 +2696,18 @@ def audit_log_list(request):
         'total_logs': total_logs,
         'stats': stats,
     })
+
+# Importar las nuevas vistas
+from .import_export import importar_bienes_excel, exportar_bienes_excel
+
+@login_required
+def analytics(request):
+    return render(request, 'inventario/analytics.html')
+
+@login_required
+def importar_bienes(request):
+    return render(request, 'inventario/importar_bienes.html')
+
+@login_required  
+def ratelimit_view(request, exception):
+    return render(request, 'inventario/ratelimit.html', status=429)

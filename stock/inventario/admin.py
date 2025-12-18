@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Rubro, Bien, Servicio, OrdenDeCompra, OrdenDeCompraItem, Almacen, Entrega, EntregaItem
+from .models import Rubro, Bien, Servicio, OrdenDeCompra, OrdenDeCompraItem, Almacen, Entrega, EntregaItem, ServicioPago, AuditLog
 
 admin.site.register(Rubro)
 admin.site.register(Bien)
@@ -39,3 +39,6 @@ class OrdenDeCompraAdmin(admin.ModelAdmin):
     list_display = ("numero", "fecha_inicio", "fecha_fin", "proveedor")
     search_fields = ("numero", "proveedor")
     date_hierarchy = "fecha_inicio"
+
+admin.site.register(ServicioPago)
+admin.site.register(AuditLog)

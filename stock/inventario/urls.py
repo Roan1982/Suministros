@@ -1,8 +1,23 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
+from rest_framework.routers import DefaultRouter
+from . import api
+
+router = DefaultRouter()
+router.register(r'rubros', api.RubroViewSet)
+router.register(r'bienes', api.BienViewSet)
+router.register(r'ordenes', api.OrdenDeCompraViewSet)
+router.register(r'entregas', api.EntregaViewSet)
+router.register(r'servicios', api.ServicioViewSet)
 
 urlpatterns = [
+    path('api/', include(router.urls)),
+    path('api/analytics/', api.AnalyticsAPIView.as_view(), name='api_analytics'),
+    path('analytics/', views.analytics, name='analytics'),
+    path('importar_bienes/', views.importar_bienes, name='importar_bienes'),
+    path('exportar_bienes/', views.exportar_bienes_excel, name='exportar_bienes'),
+    # ... existing paths ...
     path('api/orden_bien_stock/<int:orden_id>/<int:bien_id>/', views.api_orden_bien_stock, name='api_orden_bien_stock'),
     path('', views.dashboard, name='dashboard'),
     path('remitos/', views.remitos_list, name='remitos_list'),

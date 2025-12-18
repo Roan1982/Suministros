@@ -1,0 +1,88 @@
+{% extends 'inventario/base.html' %}
+{% load static %}
+
+{% block title %}Importar Bienes desde Excel{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-excel text-success"></i> Importar Bienes desde Excel</h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'bienes_list' %}">Bienes</a></li>
+                        <li class="breadcrumb-item active">Importar</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Subir Archivo Excel</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="excel_file" class="form-label">Seleccionar archivo Excel (.xlsx, .xls)</label>
+                            <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">
+                                El archivo debe contener las columnas: nombre, rubro, catalogo, renglon
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Formato esperado del archivo Excel:</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>nombre</th>
+                                        <th>rubro</th>
+                                        <th>catalogo</th>
+                                        <th>renglon</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>LAPIZ HB</td>
+                                        <td>UTILIDADES</td>
+                                        <td>CAT001</td>
+                                        <td>001</td>
+                                    </tr>
+                                    <tr>
+                                        <td>CUADERNO A4</td>
+                                        <td>UTILIDADES</td>
+                                        <td>CAT002</td>
+                                        <td>002</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <small class="text-muted">
+                                - Los rubros se crean automáticamente si no existen<br>
+                                - Los nombres se convierten a mayúsculas<br>
+                                - Los bienes duplicados se omiten
+                            </small>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'bienes_list' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-upload"></i> Importar Bienes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
