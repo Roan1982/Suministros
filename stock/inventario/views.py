@@ -1386,6 +1386,9 @@ def dashboard(request):
                 'dias_restantes': dias_restantes
             })
 
+    # Ordenar órdenes de compra por días restantes (menor a mayor)
+    ordenes_vencer = sorted(ordenes_vencer, key=lambda x: x['dias_restantes'])
+
     # Paginación para órdenes de compra
     ordenes_paginator = Paginator(ordenes_vencer, 10)
     ordenes_page = request.GET.get('ordenes_page')
