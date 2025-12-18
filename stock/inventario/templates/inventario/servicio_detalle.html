@@ -260,33 +260,62 @@
                         </div>
                         <div class="card-body">
                             <div id="accordionAnios">
-                                {% for anio, pagos_anio in pagos_por_anio.items %}
+                                {% for anio_data in anios_con_estadisticas %}
                                 <div class="card mb-3">
-                                    <div class="card-header bg-info text-white" id="headingAnio{{ anio }}">
-                                        <h5 class="mb-0">
-                                            <button class="btn btn-link text-white" data-bs-toggle="collapse" data-bs-target="#collapseAnio{{ anio }}" aria-expanded="false" aria-controls="collapseAnio{{ anio }}">
-                                                <i class="fas fa-calendar-year"></i> {{ anio }}
-                                                <span class="badge badge-light ml-2">{{ pagos_anio|length }} pagos</span>
-                                            </button>
-                                        </h5>
+                                    <div class="card-header bg-info text-white" id="headingAnio{{ anio_data.anio }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <button class="btn btn-link text-white p-0" data-bs-toggle="collapse" data-bs-target="#collapseAnio{{ anio_data.anio }}" aria-expanded="false" aria-controls="collapseAnio{{ anio_data.anio }}">
+                                                    <i class="fas fa-calendar-year"></i> {{ anio_data.anio }}
+                                                </button>
+                                            </h5>
+                                            <span class="badge badge-light">{{ anio_data.estadisticas.pagados }} de {{ anio_data.estadisticas.total }} pagos</span>
+                                        </div>
                                     </div>
-                                    <div id="collapseAnio{{ anio }}" class="collapse" aria-labelledby="headingAnio{{ anio }}" data-bs-parent="#accordionAnios">
+                                    <div id="collapseAnio{{ anio_data.anio }}" class="collapse" aria-labelledby="headingAnio{{ anio_data.anio }}" data-bs-parent="#accordionAnios">
                                         <div class="card-body">
-                                            <div id="accordion{{ anio }}">
-                                                {% regroup pagos_anio by fecha_vencimiento.month as meses %}
-                                                {% for mes in meses %}
+                                            <div class="alert alert-info mb-3">
+                                                <i class="fas fa-info-circle"></i>
+                                                <strong>Estado del año {{ anio_data.anio }}:</strong> {{ anio_data.estadisticas.pagados }} de {{ anio_data.estadisticas.total }} pagos realizados
+                                                {% if anio_data.estadisticas.pagados == anio_data.estadisticas.total %}
+                                                    <span class="badge badge-success ml-2"><i class="fas fa-check-circle"></i> Todo pagado</span>
+                                                {% elif anio_data.estadisticas.pagados > 0 %}
+                                                    <span class="badge badge-warning ml-2"><i class="fas fa-clock"></i> Pagos parciales</span>
+                                                {% else %}
+                                                    <span class="badge badge-danger ml-2"><i class="fas fa-exclamation-triangle"></i> Sin pagos</span>
+                                                {% endif %}
+                                            </div>
+                                            <div id="accordion{{ anio_data.anio }}">
+                                                {% for mes_data in anio_data.meses %}
                                                 <div class="card mb-2">
-                                                    <div class="card-header" id="headingMes{{ anio }}{{ mes.grouper }}">
-                                                        <h5 class="mb-0">
-                                                            <button class="btn btn-link collapsed" data-bs-toggle="collapse" data-bs-target="#collapseMes{{ anio }}{{ mes.grouper }}" aria-expanded="false" aria-controls="collapseMes{{ anio }}{{ mes.grouper }}">
-                                                                <i class="fas fa-calendar-day"></i> {{ mes.list.0.fecha_vencimiento|date:"F Y" }}
-                                                                <span class="badge badge-light ml-2">{{ mes.list|length }} pagos</span>
-                                                            </button>
-                                                        </h5>
+                                                    <div class="card-header" id="headingMes{{ anio_data.anio }}{{ mes_data.mes }}">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <h5 class="mb-0">
+                                                                <button class="btn btn-link collapsed p-0" data-bs-toggle="collapse" data-bs-target="#collapseMes{{ anio_data.anio }}{{ mes_data.mes }}" aria-expanded="false" aria-controls="collapseMes{{ anio_data.anio }}{{ mes_data.mes }}">
+                                                                    <i class="fas fa-calendar-day"></i> {{ mes_data.pagos.0.fecha_vencimiento|date:"F Y" }}
+                                                                </button>
+                                                            </h5>
+                                                            {% if mes_data.estadisticas.pagados == mes_data.estadisticas.total %}
+                                                                <span class="badge bg-success text-white"><i class="fas fa-check-circle"></i> Pagado completo</span>
+                                                            {% else %}
+                                                                <span class="badge bg-warning text-dark">{{ mes_data.estadisticas.pagados }} de {{ mes_data.estadisticas.total }} pagos</span>
+                                                            {% endif %}
+                                                        </div>
                                                     </div>
-                                                    <div id="collapseMes{{ anio }}{{ mes.grouper }}" class="collapse" aria-labelledby="headingMes{{ anio }}{{ mes.grouper }}" data-bs-parent="#accordion{{ anio }}">
+                                                    <div id="collapseMes{{ anio_data.anio }}{{ mes_data.mes }}" class="collapse" aria-labelledby="headingMes{{ anio_data.anio }}{{ mes_data.mes }}" data-bs-parent="#accordion{{ anio_data.anio }}">
                                                         <div class="card-body">
-                                                            {% for pago in mes.list %}
+                                                            <div class="alert alert-info mb-3">
+                                                                <i class="fas fa-info-circle"></i>
+                                                                <strong>Estado del mes:</strong> {{ mes_data.estadisticas.pagados }} de {{ mes_data.estadisticas.total }} pagos realizados
+                                                                {% if mes_data.estadisticas.pagados == mes_data.estadisticas.total %}
+                                                                    <span class="badge badge-success ml-2">Completado</span>
+                                                                {% elif mes_data.estadisticas.pagados > 0 %}
+                                                                    <span class="badge badge-warning ml-2">Parcial</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-danger ml-2">Pendiente</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            {% for pago in mes_data.pagos %}
                                                             <div class="border-bottom pb-2 mb-2">
                                                                 <div class="row">
                                                                     <div class="col-md-6">

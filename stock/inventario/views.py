@@ -2042,12 +2042,70 @@ def servicio_detalle(request, pk):
             pagos_por_anio[anio] = []
         pagos_por_anio[anio].append(pago)
     
-    # Ordenar años
-    pagos_por_anio = dict(sorted(pagos_por_anio.items()))
+    # Calcular estadísticas de pagos por año
+    estadisticas_anio = {}
+    for anio, pagos in pagos_por_anio.items():
+        total_pagos = len(pagos)
+        pagos_pagados = len([p for p in pagos if p.estado == 'PAGADO'])
+        estadisticas_anio[anio] = {
+            'total': total_pagos,
+            'pagados': pagos_pagados
+        }
+    
+    # Crear lista de años con estadísticas para el template
+    anios_con_estadisticas = []
+    for anio in pagos_por_anio.keys():
+        # Agrupar pagos por mes para este año
+        pagos_anio = pagos_por_anio[anio]
+        meses_agrupados = {}
+        for pago in pagos_anio:
+            mes = pago.fecha_vencimiento.month
+            if mes not in meses_agrupados:
+                meses_agrupados[mes] = []
+            meses_agrupados[mes].append(pago)
+        
+        # Crear lista de meses con estadísticas
+        meses_con_estadisticas = []
+        for mes, pagos_mes in meses_agrupados.items():
+            total_pagos_mes = len(pagos_mes)
+            pagos_pagados_mes = len([p for p in pagos_mes if p.estado == 'PAGADO'])
+            meses_con_estadisticas.append({
+                'mes': mes,
+                'pagos': pagos_mes,
+                'estadisticas': {
+                    'total': total_pagos_mes,
+                    'pagados': pagos_pagados_mes
+                }
+            })
+        meses_con_estadisticas.sort(key=lambda x: x['mes'])
+        
+        anios_con_estadisticas.append({
+            'anio': anio,
+            'pagos': pagos_por_anio[anio],
+            'estadisticas': estadisticas_anio[anio],
+            'meses': meses_con_estadisticas
+        })
+    anios_con_estadisticas.sort(key=lambda x: x['anio'])
+    
+    # Calcular estadísticas de pagos por mes
+    estadisticas_mes = {}
+    for anio, pagos in pagos_por_anio.items():
+        meses_data = {}
+        for pago in pagos:
+            mes_key = f"{anio}-{pago.fecha_vencimiento.month:02d}"
+            if mes_key not in meses_data:
+                meses_data[mes_key] = {'total': 0, 'pagados': 0}
+            meses_data[mes_key]['total'] += 1
+            if pago.estado == 'PAGADO':
+                meses_data[mes_key]['pagados'] += 1
+        estadisticas_mes.update(meses_data)
     
     return render(request, 'inventario/servicio_detalle.html', {
         'servicio': servicio,
-        'pagos_por_anio': pagos_por_anio
+        'anios_con_estadisticas': anios_con_estadisticas,
+        'pagos_por_anio': pagos_por_anio,
+        'estadisticas_anio': estadisticas_anio,
+        'estadisticas_mes': estadisticas_mes
     })
 
 @login_required
