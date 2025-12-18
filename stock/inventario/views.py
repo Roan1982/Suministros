@@ -2701,10 +2701,6 @@ def audit_log_list(request):
 from .import_export import importar_bienes_excel, exportar_bienes_excel
 
 @login_required
-def analytics(request):
-    return render(request, 'inventario/analytics.html')
-
-@login_required
 def importar_bienes(request):
     return render(request, 'inventario/importar_bienes.html')
 

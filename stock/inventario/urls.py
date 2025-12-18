@@ -14,7 +14,6 @@ router.register(r'servicios', api.ServicioViewSet)
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/analytics/', api.AnalyticsAPIView.as_view(), name='api_analytics'),
-    path('analytics/', views.analytics, name='analytics'),
     path('importar_bienes/', views.importar_bienes, name='importar_bienes'),
     path('exportar_bienes/', views.exportar_bienes_excel, name='exportar_bienes'),
     # ... existing paths ...
