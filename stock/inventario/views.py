@@ -2209,23 +2209,52 @@ def reporte_servicios_estado(request):
         })
 
     if request.GET.get('export') == 'excel':
+        # Obtener detalle de servicios para exportación
+        servicios_detalle = Servicio.objects.select_related('rubro').order_by('estado', 'nombre')
+        excel_rows = []
+        for servicio in servicios_detalle:
+            excel_rows.append({
+                'Estado': dict(Servicio.ESTADO_CHOICES).get(servicio.estado, servicio.estado),
+                'Nombre': servicio.nombre,
+                'Proveedor': servicio.proveedor,
+                'Frecuencia': dict(Servicio.FRECUENCIA_CHOICES).get(servicio.frecuencia, servicio.frecuencia),
+                'Costo Mensual ($)': float(servicio.costo_mensual),
+                'Fecha Inicio': servicio.fecha_inicio.strftime('%d/%m/%Y') if servicio.fecha_inicio else '',
+                'Fecha Fin': servicio.fecha_fin.strftime('%d/%m/%Y') if servicio.fecha_fin else '',
+                'Rubro': servicio.rubro.nombre if servicio.rubro else '',
+                'Expediente Contratación': servicio.expediente_contratacion,
+                'Observaciones': servicio.observaciones,
+            })
         df = pd.DataFrame(excel_rows)
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=servicios_por_estado.xlsx'
+        response['Content-Disposition'] = 'attachment; filename=servicios_detalle.xlsx'
         df.to_excel(response, index=False)
         return response
 
     if request.GET.get('export') == 'pdf':
+        # Obtener detalle de servicios para exportación
+        servicios_detalle = Servicio.objects.select_related('rubro').order_by('estado', 'nombre')
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename=servicios_por_estado.pdf'
-        doc = SimpleDocTemplate(response, pagesize=letter)
+        response['Content-Disposition'] = 'attachment; filename=servicios_detalle.pdf'
+        from reportlab.lib.pagesizes import landscape, letter
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
         elements = []
         styles = getSampleStyleSheet()
-        elements.append(Paragraph('Servicios por Estado', styles['Title']))
+        elements.append(Paragraph('Detalle de Servicios por Estado', styles['Title']))
         elements.append(Spacer(1, 12))
-        table_data = [["Estado", "Cantidad de Servicios", "Costo Total Mensual ($)"]]
-        for row in excel_rows:
-            table_data.append([row['Estado'], row['Cantidad de Servicios'], f"{row['Costo Total Mensual ($)']:.2f}"])
+        
+        table_data = [["Estado", "Nombre", "Proveedor", "Frecuencia", "Costo Mensual ($)", "Fecha Inicio", "Fecha Fin", "Rubro"]]
+        for servicio in servicios_detalle:
+            table_data.append([
+                dict(Servicio.ESTADO_CHOICES).get(servicio.estado, servicio.estado),
+                servicio.nombre[:20] + '...' if len(servicio.nombre) > 20 else servicio.nombre,
+                servicio.proveedor[:15] + '...' if len(servicio.proveedor) > 15 else servicio.proveedor,
+                dict(Servicio.FRECUENCIA_CHOICES).get(servicio.frecuencia, servicio.frecuencia),
+                f"{float(servicio.costo_mensual):.2f}",
+                servicio.fecha_inicio.strftime('%d/%m/%y') if servicio.fecha_inicio else '',
+                servicio.fecha_fin.strftime('%d/%m/%y') if servicio.fecha_fin else '',
+                servicio.rubro.nombre if servicio.rubro else '',
+            ])
         t = Table(table_data, repeatRows=1)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.grey),
@@ -2235,6 +2264,7 @@ def reporte_servicios_estado(request):
             ('BOTTOMPADDING', (0,0), (-1,0), 8),
             ('BACKGROUND', (0,1), (-1,-1), colors.beige),
             ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('FONTSIZE', (0,0), (-1,-1), 5.5),
         ]))
         elements.append(t)
         doc.build(elements)
@@ -2523,6 +2553,7 @@ def reporte_costos_servicios(request):
             ('BOTTOMPADDING', (0,0), (-1,0), 8),
             ('BACKGROUND', (0,1), (-1,-1), colors.beige),
             ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('FONTSIZE', (0,0), (-1,-1), 8),
         ]))
         elements.append(t)
         doc.build(elements)
@@ -2625,8 +2656,8 @@ def reporte_servicios_pendientes(request):
         table_data = [["Servicio", "Proveedor", "Frecuencia", "Fecha Vencimiento", "Monto Mensual ($)"]]
         for row in excel_rows:
             table_data.append([
-                row['Servicio'],
-                row['Proveedor'],
+                row['Servicio'][:25] + '...' if len(row['Servicio']) > 25 else row['Servicio'],
+                row['Proveedor'][:20] + '...' if len(row['Proveedor']) > 20 else row['Proveedor'],
                 row['Frecuencia'],
                 row['Fecha Vencimiento'],
                 row['Monto Mensual ($)']
@@ -2638,7 +2669,7 @@ def reporte_servicios_pendientes(request):
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
