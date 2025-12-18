@@ -1999,24 +1999,40 @@ def servicio_detalle(request, pk):
         if servicio.frecuencia == 'MENSUAL':
             fecha_actual = servicio.fecha_inicio.replace(day=1)  # Primer día del mes de inicio
             fecha_limite = mes_actual  # Solo hasta el mes actual
-            delta = relativedelta(months=1)
+            while fecha_actual <= fecha_limite:
+                if not servicio.pagos.filter(fecha_vencimiento=fecha_actual).exists():
+                    ServicioPago.objects.create(
+                        servicio=servicio,
+                        fecha_vencimiento=fecha_actual,
+                        estado='PENDIENTE'
+                    )
+                fecha_actual += relativedelta(months=1)
         elif servicio.frecuencia == 'QUINCENAL':
+            # Generar pagos el día 1 y 16 de cada mes
             fecha_actual = servicio.fecha_inicio
-            fecha_limite = hoy + relativedelta(days=15)  # Hasta hoy + 15 días para incluir el próximo
-            delta = relativedelta(days=15)
-        
-        # Si el servicio tiene fecha_fin y es anterior a la fecha límite, usar esa fecha
-        if servicio.fecha_fin and servicio.fecha_fin < fecha_limite:
-            fecha_limite = servicio.fecha_fin
-        
-        while fecha_actual <= fecha_limite:
-            if not servicio.pagos.filter(fecha_vencimiento=fecha_actual).exists():
-                ServicioPago.objects.create(
-                    servicio=servicio,
-                    fecha_vencimiento=fecha_actual,
-                    estado='PENDIENTE'
-                )
-            fecha_actual += delta
+            fecha_limite = hoy + relativedelta(months=1)  # Hasta el próximo mes
+            while fecha_actual <= fecha_limite:
+                # Pago del día 1 del mes
+                fecha_pago_1 = fecha_actual.replace(day=1)
+                if fecha_pago_1 >= servicio.fecha_inicio and fecha_pago_1 <= fecha_limite:
+                    if not servicio.pagos.filter(fecha_vencimiento=fecha_pago_1).exists():
+                        ServicioPago.objects.create(
+                            servicio=servicio,
+                            fecha_vencimiento=fecha_pago_1,
+                            estado='PENDIENTE'
+                        )
+                
+                # Pago del día 16 del mes
+                fecha_pago_16 = fecha_actual.replace(day=16)
+                if fecha_pago_16 >= servicio.fecha_inicio and fecha_pago_16 <= fecha_limite:
+                    if not servicio.pagos.filter(fecha_vencimiento=fecha_pago_16).exists():
+                        ServicioPago.objects.create(
+                            servicio=servicio,
+                            fecha_vencimiento=fecha_pago_16,
+                            estado='PENDIENTE'
+                        )
+                
+                fecha_actual += relativedelta(months=1)
     
     # Agrupar pagos por año
     pagos_por_anio = {}
@@ -2610,3 +2626,73 @@ def realizar_pago(request, pago_id):
         else:
             messages.error(request, 'Fecha e importe son obligatorios.')
     return redirect('reporte_servicios_pendientes')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+def audit_log_list(request):
+    """Vista para listar registros de auditoría"""
+    from .models import AuditLog
+    from django.contrib.contenttypes.models import ContentType
+    from django.db.models import Q, Count
+    
+    # Filtros
+    q = request.GET.get('q', '').strip()
+    action = request.GET.get('action', '')
+    user_id = request.GET.get('user', '')
+    model_type = request.GET.get('model', '')
+    
+    # Query base
+    logs = AuditLog.objects.select_related('user', 'content_type').order_by('-timestamp')
+    
+    # Aplicar filtros
+    if q:
+        logs = logs.filter(
+            Q(user__username__icontains=q) |
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q) |
+            Q(object_repr__icontains=q) |
+            Q(changes__icontains=q)
+        )
+    
+    if action:
+        logs = logs.filter(action=action)
+    
+    if user_id:
+        if user_id == 'None':
+            logs = logs.filter(user__isnull=True)
+        else:
+            logs = logs.filter(user_id=user_id)
+    
+    if model_type:
+        logs = logs.filter(content_type__model=model_type)
+    
+    # Estadísticas
+    total_logs = logs.count()
+    stats = logs.values('action').annotate(count=Count('action')).order_by('-count')
+    
+    # Usuarios únicos
+    users = AuditLog.objects.values('user__id', 'user__username', 'user__first_name', 'user__last_name').distinct().exclude(user__isnull=True)
+    
+    # Tipos de modelo
+    model_types = []
+    for ct in ContentType.objects.filter(app_label='inventario'):
+        if ct.model in ['rubro', 'bien', 'ordendecompra', 'ordendecompraitem', 'entrega', 'entregaitem', 'servicio', 'serviciopago', 'almacen']:
+            model_types.append({'model': ct.model, 'name': ct.name})
+    
+    # Paginación
+    from django.core.paginator import Paginator
+    paginator = Paginator(logs, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'inventario/audit_log.html', {
+        'page_obj': page_obj,
+        'q': q,
+        'action': action,
+        'user_id': user_id,
+        'model_type': model_type,
+        'users': users,
+        'model_types': model_types,
+        'total_logs': total_logs,
+        'stats': stats,
+    })

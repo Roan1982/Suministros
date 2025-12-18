@@ -82,19 +82,22 @@ Un sistema completo de gestión de inventario desarrollado con Django que permit
 
 ### Despliegue con Docker
 
-1. **Construir y ejecutar**:
+1. **Construir y ejecutar (se iniciará DB y Web; el contenedor web esperará la DB, ejecutará las migraciones y collectstatic automáticamente)**:
    ```bash
-   docker-compose up --build
+   docker-compose up --build -d
+   docker-compose logs -f
    ```
 
-2. **Aplicar migraciones**:
+> 💡 Si preferís ver logs en tiempo real sin modo detach:
+> ```bash
+> docker-compose up --build
+> ```
+
+2. **Comandos útiles si necesitas ejecutarlos manualmente**:
    ```bash
    docker-compose exec web python manage.py migrate
-   ```
-
-3. **Crear superusuario**:
-   ```bash
    docker-compose exec web python manage.py createsuperuser
+   docker-compose exec web python manage.py collectstatic --noinput
    ```
 
 Para instrucciones detalladas de despliegue en PythonAnywhere, consulta `README_DEPLOY.md`.

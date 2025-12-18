@@ -207,7 +207,7 @@ class Servicio(models.Model):
         from datetime import date
         
         # Eliminar pagos existentes si es necesario (opcional)
-        # self.pagos.all().delete()
+        self.pagos.all().delete()
         
         if self.frecuencia == 'MENSUAL':
             if not self.fecha_fin:
