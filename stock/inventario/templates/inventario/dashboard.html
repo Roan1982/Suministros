@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(stockCtx, {
             type: 'pie',
             data: {
-                labels: data.stock_por_rubro.map(item => item.rubro__nombre || 'Sin nombre'),
+                labels: data.stock_por_rubro.map(item => (item.rubro__nombre || 'Sin nombre') + ': ' + (item.total_stock || 0)),
                 datasets: [{
                     data: data.stock_por_rubro.map(item => item.total_stock || 0),
                     backgroundColor: [
@@ -335,12 +335,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     legend: {
                         position: 'bottom',
+                        align: 'start',
+                        maxWidth: 400,
                         labels: {
-                            padding: 20,
+                            padding: 10,
                             usePointStyle: true,
                             font: {
-                                size: 12
-                            }
+                                size: 9
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
                         }
                     },
                     tooltip: {
@@ -392,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return '$' + Number(value).toLocaleString('es-AR');
                             },
                             font: {
-                                size: 12
+                                size: 10
                             }
                         },
                         grid: {
@@ -405,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         ticks: {
                             font: {
-                                size: 12
+                                size: 10
                             }
                         }
                     }
@@ -452,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             padding: 20,
                             usePointStyle: true,
                             font: {
-                                size: 12
+                                size: 10
                             }
                         }
                     },

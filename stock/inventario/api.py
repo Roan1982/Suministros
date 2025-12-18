@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Rubro, Bien, OrdenDeCompra, Entrega, Servicio, EntregaItem
+from .models import Rubro, Bien, OrdenDeCompra, OrdenDeCompraItem, Entrega, Servicio, EntregaItem
 from .serializers import (
     RubroSerializer, BienSerializer, OrdenDeCompraSerializer,
     EntregaSerializer, ServicioSerializer
@@ -63,40 +63,42 @@ class AnalyticsAPIView(APIView):
         return Response(data)
     
     def get_stock_por_rubro(self):
-        # Calcular stock real por rubro
+        # Calcular stock real por rubro usando el mismo método que el reporte
         try:
-            from django.db.models import Sum, F
-            from django.db.models.functions import Coalesce
-            
-            # Primero obtener todos los rubros que tienen bienes
-            rubros_con_stock = list(
-                Bien.objects.annotate(
-                    total_orden=Coalesce(Sum('ordendecompraitem__cantidad'), 0),
-                    total_entrega=Coalesce(Sum('entregaitem__cantidad'), 0)
-                ).annotate(
-                    stock=F('total_orden') - F('total_entrega')
-                ).filter(stock__gt=0).values('rubro__nombre').annotate(
-                    total_stock=Sum('stock')
-                ).order_by('-total_stock')[:10]
-            )
-            
-            # Si no hay stock, devolver rubros con al menos algunos bienes
-            if not rubros_con_stock:
-                rubros_con_stock = list(
-                    Rubro.objects.annotate(
-                        total_bienes=Count('bien')
-                    ).filter(total_bienes__gt=0).values('nombre').annotate(
-                        total_stock=Count('bien')
-                    ).order_by('-total_stock')[:10]
-                )
-                # Renombrar el campo para consistencia
-                for item in rubros_con_stock:
-                    item['rubro__nombre'] = item.pop('nombre')
-            
-            return rubros_con_stock
+            from django.db.models import Sum
+
+            rubros = Rubro.objects.all().order_by('nombre')
+            stock_por_rubro = []
+
+            for rubro in rubros:
+                bienes = Bien.objects.filter(rubro=rubro)
+                total_stock_rubro = 0
+
+                for bien in bienes:
+                    comprado = OrdenDeCompraItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+                    entregado = EntregaItem.objects.filter(bien=bien).aggregate(total=Sum('cantidad'))['total'] or 0
+                    stock = comprado - entregado
+                    if stock > 0:
+                        total_stock_rubro += stock
+
+                if total_stock_rubro > 0:
+                    stock_por_rubro.append({
+                        'rubro__nombre': rubro.nombre,
+                        'total_stock': total_stock_rubro
+                    })
+                else:
+                    # Incluir rubros con stock 0 para mostrar todos
+                    stock_por_rubro.append({
+                        'rubro__nombre': rubro.nombre,
+                        'total_stock': 0
+                    })
+
+            # Ordenar por stock descendente
+            stock_por_rubro.sort(key=lambda x: x['total_stock'], reverse=True)
+            return stock_por_rubro
         except Exception as e:
-            # Si hay error, devolver datos de prueba
-            return [{'rubro__nombre': 'Sin Stock Disponible', 'total_stock': 1}]
+            # Si hay error, devolver lista vacía
+            return []
     
     def get_stock_value_por_rubro(self):
         # Calcular valor del stock por rubro
