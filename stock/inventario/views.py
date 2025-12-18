@@ -727,14 +727,14 @@ def reporte_entregas_area(request):
         for row in totales_qs
     ]
 
-    # Detalle por año, área/persona y bien
+    # Detalle por año, área/persona y bien (incluyendo fecha de entrega)
     detalle_qs = EntregaItem.objects.annotate(
         anio=ExtractYear('entrega__fecha')
-    ).values('anio', 'entrega__area_persona', 'bien__nombre').annotate(
+    ).values('anio', 'entrega__area_persona', 'bien__nombre', 'entrega__fecha').annotate(
         cantidad=Sum('cantidad')
-    ).order_by('anio', 'entrega__area_persona', 'bien__nombre')
+    ).order_by('anio', 'entrega__area_persona', 'bien__nombre', 'entrega__fecha')
 
-    # Agrupar para el template: {anio: {detalle: [{area, bien, cantidad}]}}
+    # Agrupar para el template: {anio: {detalle: [{area, bien, cantidad, fecha}]}}
     from collections import defaultdict
     detalles_por_anio = defaultdict(list)
     for row in detalle_qs:
@@ -742,6 +742,7 @@ def reporte_entregas_area(request):
             'area': row['entrega__area_persona'],
             'bien': row['bien__nombre'],
             'cantidad': row['cantidad'],
+            'fecha_entrega': row['entrega__fecha'],
         })
     detalles_por_anio = [
         {'anio': anio, 'detalle': detalles}
@@ -750,19 +751,21 @@ def reporte_entregas_area(request):
 
     # Para exportar a Excel
     if request.GET.get('export') == 'excel':
-        with pd.ExcelWriter('entregas_por_area_temp.xlsx', engine='openpyxl') as writer:
+        from io import BytesIO
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df_totales = pd.DataFrame([{ 'Área / Persona': t['area'], 'Cantidad de Entregas': t['cantidad'], 'Monto Total ($)': t['total'] } for t in totales])
             df_detalle = pd.DataFrame([
-                { 'Año': d['anio'], 'Área / Persona': d['area'], 'Bien': d['bien'], 'Cantidad Entregada': d['cantidad'] }
+                { 'Año': d['anio'], 'Área / Persona': d['entrega__area_persona'], 'Bien': d['bien__nombre'], 'Fecha de Entrega': d['entrega__fecha'].strftime('%d/%m/%Y'), 'Cantidad Entregada': d['cantidad'] }
                 for d in detalle_qs
             ])
             df_totales.to_excel(writer, sheet_name='Totales', index=False)
             df_detalle.to_excel(writer, sheet_name='Detalle', index=False)
-            writer.save()
-        with open('entregas_por_area_temp.xlsx', 'rb') as f:
-            response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = 'attachment; filename=entregas_por_area.xlsx'
-            return response
+        
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=entregas_por_area.xlsx'
+        return response
 
     # Para exportar a PDF
     if request.GET.get('export') == 'pdf':
@@ -793,9 +796,9 @@ def reporte_entregas_area(request):
         # Detalle por año
         for anio in detalles_por_anio:
             elements.append(Paragraph(f"Año: {anio['anio']}", styles['Heading3']))
-            table_data2 = [["Área / Persona", "Bien", "Cantidad Entregada"]]
+            table_data2 = [["Área / Persona", "Bien", "Fecha de Entrega", "Cantidad Entregada"]]
             for d in anio['detalle']:
-                table_data2.append([d['area'], d['bien'], d['cantidad']])
+                table_data2.append([d['area'], d['bien'], d['fecha_entrega'].strftime('%d/%m/%Y'), d['cantidad']])
             t2 = Table(table_data2, repeatRows=1)
             t2.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.grey),
